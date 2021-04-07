@@ -52,9 +52,14 @@ fn main() {
         }
     }
 
-    let name = env::var("CARGO_PKG_NAME").unwrap();
-    let ver = env::var("CARGO_PKG_VERSION").unwrap();
-    let repo = env::var("CARGO_PKG_REPOSITORY").unwrap();
+    println!("\n---\n\nReferences\n");
+    println!("- :bricks: Initialization method. Needs to be called right after deployment.");
+    println!("- :eyeglasses: View only method, *i.e.*, does not modify the contract state.");
+    println!("- :writing_hand: Call method, i.e., does modify the contract state.");
+
+    let name = env!("CARGO_PKG_NAME");
+    let ver = env!("CARGO_PKG_VERSION");
+    let repo = env!("CARGO_PKG_REPOSITORY");
     println!(
         "\n---\n\n*This documentation was generated with* **{} v{}** <{}> *on {}*",
         name, ver, repo, now
