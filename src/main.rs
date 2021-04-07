@@ -6,6 +6,7 @@ use std::{env, ops::Deref};
 
 use chrono::Utc;
 use proc_macro2::TokenTree;
+use quote::quote;
 use syn::{
     Attribute, FnArg, ImplItem, ImplItemMethod, Item::Impl, ItemImpl, Pat, Path, Type, Visibility,
 };
@@ -117,10 +118,23 @@ fn extract_sig(method: &ImplItemMethod) -> String {
         }
     }
 
+    let ret_type = match &method.sig.output {
+        syn::ReturnType::Default => "void".to_string(),
+        syn::ReturnType::Type(_, typ) => {
+            let typ = typ.deref();
+            let type_name = proc_macro2::TokenStream::from(quote! { #typ }).to_string();
+            if type_name == "Self" {
+                "void".to_string()
+            } else {
+                type_name
+            }
+        }
+    };
+
     let mut fmt = String::new();
     write!(fmt, "{}(", method.sig.ident).unwrap();
     write!(fmt, "{}", args.join(", ")).unwrap();
-    write!(fmt, ")").unwrap();
+    write!(fmt, "): {}", ret_type).unwrap();
     fmt
 }
 
