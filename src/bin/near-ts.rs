@@ -146,7 +146,7 @@ impl TS {
                 "Option" => {
                     if let PathArguments::AngleBracketed(args) = &p.path.segments[0].arguments {
                         if let syn::GenericArgument::Type(t) = &args.args[0] {
-                            return format!("{}|undefined", self.ts_type(&t));
+                            return format!("{}|null", self.ts_type(&t));
                         }
                     }
                     panic!("not expected");
