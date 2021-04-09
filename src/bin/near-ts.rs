@@ -1,4 +1,4 @@
-// #![deny(warnings)]
+#![deny(warnings)]
 
 use chrono::Utc;
 use near_doc::{derives, has_attr, is_mut, is_public, join_path, parse_rust};
@@ -204,7 +204,6 @@ impl TS {
                     if let syn::Pat::Ident(pat_ident) = pat_type.pat.deref() {
                         let type_name = if let syn::Type::Path(_type_path) = &*pat_type.ty {
                             self.ts_type(&pat_type.ty)
-                        // join_path(&type_path.path)
                         } else {
                             panic!("not support sig type");
                         };
@@ -218,16 +217,7 @@ impl TS {
 
         let ret_type = match &method.sig.output {
             syn::ReturnType::Default => "void".to_string(),
-            syn::ReturnType::Type(_, typ) => {
-                self.ts_type(typ.deref())
-                // let typ = typ.deref();
-                // let type_name = proc_macro2::TokenStream::from(quote! { #typ }).to_string();
-                // if type_name == "Self" {
-                //     "void".to_string()
-                // } else {
-                //     type_name
-                // }
-            }
+            syn::ReturnType::Type(_, typ) => self.ts_type(typ.deref()),
         };
 
         let args_decl = if args.len() == 0 {
