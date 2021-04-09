@@ -1,7 +1,7 @@
 #![deny(warnings)]
 
 use chrono::Utc;
-use near_doc::{derives, has_attr, is_mut, is_public, join_path, parse_rust};
+use near_doc::{derives, extract_docs, has_attr, is_mut, is_public, join_path, parse_rust};
 use std::{env, ops::Deref};
 use syn::{
     File, ImplItem, ImplItemMethod,
@@ -124,10 +124,12 @@ impl TS {
     }
 
     fn ts_struct(&self, item_struct: &ItemStruct) {
+        extract_docs(&item_struct.attrs, "");
         println!("export interface {} {{", item_struct.ident);
         for field in &item_struct.fields {
             if let Some(field_name) = &field.ident {
                 let ty = self.ts_type(&field.ty);
+                extract_docs(&field.attrs, "    ");
                 println!("    {}: {};", field_name, ty);
             } else {
                 panic!("tuple struct no supported");
@@ -189,6 +191,7 @@ impl TS {
                     } else {
                         self.view_methods.push(method.sig.ident.to_string());
                     }
+                    extract_docs(&method.attrs, "    ");
                     let sig = self.extract_sig(&method);
                     println!("    {}\n", sig);
                 }

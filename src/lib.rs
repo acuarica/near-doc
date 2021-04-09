@@ -1,8 +1,9 @@
 #![deny(warnings)]
 
 use std::{fs::File, io::Read, path::Path};
-
-use syn::{Attribute, FnArg, ImplItemMethod, Meta, MetaList, NestedMeta, Visibility};
+use syn::{
+    Attribute, FnArg, ImplItemMethod, Lit, Meta, MetaList, MetaNameValue, NestedMeta, Visibility,
+};
 
 pub fn parse_rust<S: AsRef<Path>>(file_name: S) -> syn::File {
     let mut file = File::open(file_name).expect("Unable to open file");
@@ -61,4 +62,21 @@ pub fn is_mut(method: &ImplItemMethod) -> bool {
     } else {
         false
     }
+}
+
+pub fn extract_docs(attrs: &Vec<Attribute>, indent: &str) {
+    println!("{}/**", indent);
+    for attr in attrs {
+        if attr.path.is_ident("doc") {
+            if let Ok(Meta::NameValue(MetaNameValue {
+                lit: Lit::Str(lit), ..
+            })) = attr.parse_meta()
+            {
+                println!("{} * {}", indent, lit.value());
+            } else {
+                panic!("not expected");
+            }
+        }
+    }
+    println!("{} */", indent);
 }
