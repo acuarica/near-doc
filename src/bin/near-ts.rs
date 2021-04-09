@@ -230,11 +230,14 @@ impl TS {
             }
         };
 
+        let args_decl = if args.len() == 0 {
+            "".to_string()
+        } else {
+            format!("args: {{ {} }}", args.join(", "))
+        };
         format!(
-            "{}(args: {{ {} }}): Promise<{}>;",
-            method.sig.ident,
-            args.join(", "),
-            ret_type
+            "{}({}): Promise<{}>;",
+            method.sig.ident, args_decl, ret_type
         )
     }
 }
