@@ -1,18 +1,31 @@
-# near-doc
+# near-syn
 
-Command utility to generate Markdown documentation from a Rust contract for the NEAR blockchain.
+`near-syn` is a library and command line utilities to
+make contract development for the NEAR platform easier.
+
+The `near-syn` package contains two command line utilities:
+
+- `near-ts` generates TypeScript bindings from Rust source files.
+- `near-doc` generates Markdown documentation from Rust source files.
 
 ## Installation
 
-To install the `near-doc` utility
+To install the `near-syn` package
 
 ```sh
-cargo install --git https://github.com/acuarica/near-doc --branch main
+cargo install --git https://github.com/acuarica/near-syn --branch main
 ```
 
 ## Usage
 
-The `near-doc` utility takes a Rust source file,
+The `near-ts` utility takes a group of Rust source files,
+and outputs the generated TypeScript bindings.
+
+```sh
+near-ts path/to/src/lib.rs > src/contract.ts
+```
+
+Similarly, the `near-doc` utility takes a group of Rust source files,
 and outputs the generated Markdown documentation.
 
 ```sh
