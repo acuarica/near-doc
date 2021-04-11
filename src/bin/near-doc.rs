@@ -2,11 +2,9 @@
 
 use chrono::Utc;
 use clap::Clap;
-use near_syn::{has_attr, is_mut, is_public, join_path, parse_rust, ts::ts_sig, Args};
-use proc_macro2::TokenTree;
-use std::env;
-use syn::{Attribute, ImplItem, Item::Impl, ItemImpl, Type};
-use TokenTree::Literal;
+use near_syn::{has_attr, is_mut, is_public, join_path, parse_rust, ts::ts_sig, write_docs, Args};
+use std::{env, io};
+use syn::{ImplItem, Item::Impl, ItemImpl, Type};
 
 Args!(env!("CARGO_BIN_NAME"));
 
@@ -36,7 +34,7 @@ fn main() {
 }
 
 fn md(syntax: &syn::File) {
-    extract_docs(&syntax.attrs);
+    write_docs(&mut io::stdout(), &syntax.attrs, |l| l.trim().to_string());
 
     for item in &syntax.items {
         if let Impl(impl_item) = item {
@@ -74,25 +72,7 @@ fn methods(input: &ItemImpl) {
                 };
                 println!("\n### {} `{}`{}\n", mut_mod, method.sig.ident, init_decl);
                 println!("```typescript\n{}\n```\n", ts_sig(&method));
-                extract_docs(&method.attrs);
-            }
-        }
-    }
-}
-
-fn extract_docs(attrs: &Vec<Attribute>) {
-    for attr in attrs {
-        if attr.path.is_ident("doc") {
-            for token in attr.tokens.clone() {
-                if let Literal(lit) = token {
-                    if let Some(line) = lit
-                        .to_string()
-                        .strip_prefix('"')
-                        .and_then(|s| s.strip_suffix('"'))
-                    {
-                        println!("{}", line.trim());
-                    }
-                }
+                write_docs(&mut io::stdout(), &method.attrs, |l| l.trim().to_string());
             }
         }
     }

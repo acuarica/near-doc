@@ -3,13 +3,13 @@
 use chrono::Utc;
 use clap::Clap;
 use near_syn::{
-    derives, extract_docs, has_attr, is_mut, is_public, join_path, parse_rust,
+    derives, has_attr, is_mut, is_public, join_path, parse_rust,
     ts::{ts_sig, ts_type},
-    Args,
+    write_docs, Args,
 };
 use std::env;
 use syn::{
-    File, ImplItem,
+    Attribute, File, ImplItem,
     Item::{Enum, Impl, Struct, Type},
     ItemImpl, ItemStruct,
 };
@@ -154,12 +154,12 @@ impl<T: std::io::Write> TS<T> {
     }
 
     fn ts_struct(&mut self, item_struct: &ItemStruct) {
-        extract_docs(&item_struct.attrs, "");
+        self.ts_doc(&item_struct.attrs, "");
         ln!(self, "export interface {} {{", item_struct.ident);
         for field in &item_struct.fields {
             if let Some(field_name) = &field.ident {
                 let ty = ts_type(&field.ty);
-                extract_docs(&field.attrs, "    ");
+                self.ts_doc(&field.attrs, "    ");
                 ln!(self, "    {}: {};\n", field_name, ty);
             } else {
                 panic!("tuple struct no supported");
@@ -178,10 +178,16 @@ impl<T: std::io::Write> TS<T> {
                     } else {
                         self.view_methods.push(method.sig.ident.to_string());
                     }
-                    extract_docs(&method.attrs, "    ");
+                    self.ts_doc(&method.attrs, "    ");
                     ln!(self, "    {}\n", ts_sig(&method));
                 }
             }
         }
+    }
+
+    fn ts_doc(&mut self, attrs: &Vec<Attribute>, indent: &str) {
+        ln!(self, "{}/**", indent);
+        write_docs(&mut self.file, attrs, |l| format!("{} * {}", indent, l));
+        ln!(self, "{} */", indent);
     }
 }

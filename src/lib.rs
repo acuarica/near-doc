@@ -4,7 +4,11 @@
 
 pub mod ts;
 
-use std::{fs::File, io::Read, path::Path};
+use std::{
+    fs::File,
+    io::{Read, Write},
+    path::Path,
+};
 use syn::{
     Attribute, FnArg, ImplItemMethod, Lit, Meta, MetaList, MetaNameValue, NestedMeta, Visibility,
 };
@@ -104,20 +108,23 @@ pub fn is_mut(method: &ImplItemMethod) -> bool {
     }
 }
 
-/// Prints `doc` attributes.
-pub fn extract_docs(attrs: &Vec<Attribute>, indent: &str) {
-    println!("{}/**", indent);
+/// Writes Rust `doc` comments to `file`.
+/// Each line of `doc` is prefixed with `prefix`.
+pub fn write_docs<W: Write, F: Fn(String) -> String>(
+    file: &mut W,
+    attrs: &Vec<Attribute>,
+    mapf: F,
+) {
     for attr in attrs {
         if attr.path.is_ident("doc") {
             if let Ok(Meta::NameValue(MetaNameValue {
                 lit: Lit::Str(lit), ..
             })) = attr.parse_meta()
             {
-                println!("{} * {}", indent, lit.value());
+                writeln!(file, "{}", mapf(lit.value())).unwrap();
             } else {
                 panic!("not expected");
             }
         }
     }
-    println!("{} */", indent);
 }
