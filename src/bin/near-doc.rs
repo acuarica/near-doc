@@ -1,13 +1,10 @@
 #![deny(warnings)]
 
 use chrono::Utc;
-use near_syn::{has_attr, is_mut, is_public, join_path, parse_rust};
+use near_syn::{has_attr, is_mut, is_public, join_path, parse_rust, ts::ts_sig};
 use proc_macro2::TokenTree;
-use quote::quote;
-use std::fmt::Write;
-use std::process;
-use std::{env, ops::Deref};
-use syn::{Attribute, FnArg, ImplItem, ImplItemMethod, Item::Impl, ItemImpl, Pat, Type};
+use std::{env, process};
+use syn::{Attribute, ImplItem, Item::Impl, ItemImpl, Type};
 use TokenTree::Literal;
 
 fn main() {
@@ -77,51 +74,11 @@ fn methods(input: &ItemImpl) {
                     ""
                 };
                 println!("\n### {} `{}`{}\n", mut_mod, method.sig.ident, init_decl);
-                let sig = extract_sig(&method);
-                println!("```typescript\n{}\n```\n", sig);
+                println!("```typescript\n{}\n```\n", ts_sig(&method));
                 extract_docs(&method.attrs);
             }
         }
     }
-}
-
-fn extract_sig(method: &ImplItemMethod) -> String {
-    let mut args = Vec::new();
-    for arg in method.sig.inputs.iter() {
-        match arg {
-            FnArg::Typed(pat_type) => {
-                if let Pat::Ident(pat_ident) = pat_type.pat.deref() {
-                    let type_name = if let Type::Path(type_path) = &*pat_type.ty {
-                        join_path(&type_path.path)
-                    } else {
-                        "?".to_string()
-                    };
-                    let arg_ident = &pat_ident.ident;
-                    args.push(format!("{}: {}", arg_ident, type_name));
-                }
-            }
-            _ => {}
-        }
-    }
-
-    let ret_type = match &method.sig.output {
-        syn::ReturnType::Default => "void".to_string(),
-        syn::ReturnType::Type(_, typ) => {
-            let typ = typ.deref();
-            let type_name = proc_macro2::TokenStream::from(quote! { #typ }).to_string();
-            if type_name == "Self" {
-                "void".to_string()
-            } else {
-                type_name
-            }
-        }
-    };
-
-    let mut fmt = String::new();
-    write!(fmt, "{}(", method.sig.ident).unwrap();
-    write!(fmt, "{}", args.join(", ")).unwrap();
-    write!(fmt, "): {}", ret_type).unwrap();
-    fmt
 }
 
 fn extract_docs(attrs: &Vec<Attribute>) {
