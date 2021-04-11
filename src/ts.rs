@@ -1,3 +1,5 @@
+//! Functions to transpile Rust to TypeScript.
+
 use syn::PathArguments;
 
 /// Return the TypeScript equivalent type of the Rust type represented by `ty`.

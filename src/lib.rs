@@ -1,5 +1,6 @@
+//! Provides function to deal with Rust syntax.
 #![deny(warnings)]
-// #![warn(missing_docs)]
+#![warn(missing_docs)]
 
 pub mod ts;
 
@@ -18,6 +19,7 @@ pub fn parse_rust<S: AsRef<Path>>(file_name: S) -> syn::File {
     syn::parse_file(&src).expect("Unable to parse file")
 }
 
+/// Joins segments of path by `::`.
 pub fn join_path(path: &syn::Path) -> String {
     path.segments
         .iter()
@@ -35,6 +37,8 @@ pub fn is_public(method: &ImplItemMethod) -> bool {
     }
 }
 
+/// Returns `true` if `attrs` contain `attr_name`.
+/// Returns `false` otherwise.
 pub fn has_attr(attrs: &Vec<Attribute>, attr_name: &str) -> bool {
     for attr in attrs {
         if attr.path.is_ident(attr_name) {
@@ -44,8 +48,7 @@ pub fn has_attr(attrs: &Vec<Attribute>, attr_name: &str) -> bool {
     false
 }
 
-/// Returns `true` if the item has any derive attribute 
-/// `macro_name`.
+/// Returns `true` if any of the attributes under item derive from `macro_name`.
 /// Returns `false` otherwise.
 pub fn derives(attrs: &Vec<Attribute>, macro_name: &str) -> bool {
     for attr in attrs {
@@ -66,6 +69,7 @@ pub fn derives(attrs: &Vec<Attribute>, macro_name: &str) -> bool {
     false
 }
 
+/// Returns `true` if `method` is declared as `mut`.
 pub fn is_mut(method: &ImplItemMethod) -> bool {
     if let Some(FnArg::Receiver(r)) = method.sig.inputs.iter().next() {
         r.mutability.is_some()
@@ -74,6 +78,7 @@ pub fn is_mut(method: &ImplItemMethod) -> bool {
     }
 }
 
+/// Prints `doc` attributes.
 pub fn extract_docs(attrs: &Vec<Attribute>, indent: &str) {
     println!("{}/**", indent);
     for attr in attrs {
