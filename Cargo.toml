@@ -3,6 +3,8 @@ name = "near-syn"
 version = "0.2.0"
 authors = ["Luis Mastrangelo <luismastrangelo@gmail.com>"]
 edition = "2018"
+license = "MIT"
+categories = ["command-line-utilities", "template-engine", "wasm"]
 repository = "https://github.com/acuarica/near-syn"
 homepage = "https://github.com/acuarica/near-syn"
 
