@@ -1,7 +1,8 @@
 #![deny(warnings)]
 
 use chrono::Utc;
-use near_doc::{derives, extract_docs, has_attr, is_mut, is_public, join_path, parse_rust};
+use clap::{AppSettings, Clap};
+use near_syn::{derives, extract_docs, has_attr, is_mut, is_public, join_path, parse_rust};
 use std::{env, ops::Deref};
 use syn::{
     File, ImplItem, ImplItemMethod,
@@ -9,16 +10,28 @@ use syn::{
     ItemImpl, ItemStruct, PathArguments,
 };
 
-fn main() {
-    let mut args = env::args();
-    args.next();
+#[derive(Clap)]
+#[clap(name = env!("CARGO_BIN_NAME"), version = env!("CARGO_PKG_VERSION"), author = env!("CARGO_PKG_AUTHORS"))]
+#[clap(setting = AppSettings::ColoredHelp)]
+struct Args {
+    /// Sets the time (any format) for generated output.
+    #[clap(long = "now")]
+    now: Option<String>,
 
+    #[clap()]
+    files: Vec<String>,
+}
+
+fn main() {
+    let args = Args::parse();
+
+    let now = args.now.unwrap_or_else(|| Utc::now().to_string());
     println!(
         "// TypeScript bindings generated with {} v{} {} on {}\n",
         env!("CARGO_BIN_NAME"),
         env!("CARGO_PKG_VERSION"),
         env!("CARGO_PKG_REPOSITORY"),
-        Utc::now()
+        now
     );
 
     println!("// Exports common NEAR Rust SDK types");
@@ -29,7 +42,7 @@ fn main() {
     println!("");
 
     let mut ts = TS::new();
-    for file_name in args {
+    for file_name in args.files {
         let ast = parse_rust(file_name);
         ts.ts_unit(&ast);
     }
@@ -55,11 +68,13 @@ impl TS {
     }
 
     fn ts_main_type(&self) {
-        println!(
-            "export type {} = {};\n",
-            self.name,
-            self.interfaces.join(" & ")
-        );
+        if !self.name.is_empty() && !self.interfaces.is_empty() {
+            println!(
+                "export type {} = {};\n",
+                self.name,
+                self.interfaces.join(" & ")
+            );
+        }
     }
 
     fn ts_contract_methods(&self) {

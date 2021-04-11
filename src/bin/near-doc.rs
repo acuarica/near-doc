@@ -1,7 +1,7 @@
 #![deny(warnings)]
 
 use chrono::Utc;
-use near_doc::{has_attr, is_mut, is_public, join_path, parse_rust};
+use near_syn::{has_attr, is_mut, is_public, join_path, parse_rust};
 use proc_macro2::TokenTree;
 use quote::quote;
 use std::fmt::Write;
