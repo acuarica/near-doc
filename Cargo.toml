@@ -7,6 +7,15 @@ license = "MIT"
 categories = ["command-line-utilities", "template-engine", "wasm"]
 repository = "https://github.com/acuarica/near-syn"
 homepage = "https://github.com/acuarica/near-syn"
+description = """
+`near-syn` is a library and command line utilities to
+make contract development for the NEAR platform easier.
+
+The `near-syn` package contains two command line utilities:
+
+- `near-ts` generates TypeScript bindings from Rust source files.
+- `near-doc` generates Markdown documentation from Rust source files.
+"""
 
 [dependencies]
 syn = {version = "1.0.14", features = ["full", "fold", "visit", "extra-traits", "printing"] }
