@@ -1,6 +1,8 @@
 //! Functions to transpile Rust to TypeScript.
 
-use syn::PathArguments;
+use std::ops::Deref;
+
+use syn::{ImplItemMethod, PathArguments};
 
 /// Return the TypeScript equivalent type of the Rust type represented by `ty`.
 /// Rust primitives types are included.
@@ -26,7 +28,7 @@ use syn::PathArguments;
 /// assert_eq!(ts_type(&parse_str("HashMap<AccountId, U128>").unwrap()), "Record<AccountId, U128>");
 /// ```
 ///
-/// Also nested types are converted to TypeScript.
+/// Rust nested types are converted to TypeScript as well.
 ///
 /// ```
 /// # use syn::parse_str;
@@ -40,22 +42,14 @@ use syn::PathArguments;
 ///
 /// ## Panics
 ///
-/// Incorrect type arguments in standard library generics types panics.
-///
-/// ```should_panic
-/// near_syn::ts::ts_type(&syn::parse_str("Option").unwrap());
-/// ```
-/// ```should_panic
-/// near_syn::ts::ts_type(&syn::parse_str("Option<String, String>").unwrap());
-/// ```
-/// ```should_panic
-/// near_syn::ts::ts_type(&syn::parse_str("HashMap<U64>").unwrap());
-/// ```
+/// Panics when standard library generics types are used incorrectly.
+/// For example `Option` or `HashMap<U64>`.
+/// This situation can only happen on Rust source files that were **not** type-checked by `rustc`.
 pub fn ts_type(ty: &syn::Type) -> String {
     #[derive(PartialEq, PartialOrd)]
     enum Assoc {
         Single,
-        Brackets,
+        Vec,
         Or,
     }
     fn single(ts: &str) -> (String, Assoc) {
@@ -68,6 +62,30 @@ pub fn ts_type(ty: &syn::Type) -> String {
             ta.0
         }
     }
+    fn gen_args<'a>(p: &'a syn::TypePath, nargs: usize, name: &str) -> Vec<&'a syn::Type> {
+        if let PathArguments::AngleBracketed(args) = &p.path.segments[0].arguments {
+            if args.args.len() != nargs {
+                panic!(
+                    "{} expects {} generic(s) argument(s), found {}",
+                    name,
+                    nargs,
+                    args.args.len()
+                );
+            }
+            let mut result = Vec::new();
+            for arg in &args.args {
+                if let syn::GenericArgument::Type(tk) = arg {
+                    result.push(tk);
+                } else {
+                    panic!("No type provided for {}", name);
+                }
+            }
+            result
+        } else {
+            panic!("{} used with no generic arguments", name);
+        }
+    }
+
     fn ts_type_assoc(ty: &syn::Type) -> (String, Assoc) {
         match ty {
             syn::Type::Path(p) => match crate::join_path(&p.path).as_str() {
@@ -76,40 +94,20 @@ pub fn ts_type(ty: &syn::Type) -> String {
                 "u64" => single("number"),
                 "String" => single("string"),
                 "Option" => {
-                    if let PathArguments::AngleBracketed(args) = &p.path.segments[0].arguments {
-                        if args.args.len() != 1 {
-                            panic!("incorrect Option usage");
-                        }
-                        if let syn::GenericArgument::Type(t) = &args.args[0] {
-                            let ta = ts_type_assoc(t);
-                            return (format!("{}|null", use_paren(ta, Assoc::Or)), Assoc::Or);
-                        }
-                    }
-                    panic!("not expected");
+                    let targs = gen_args(p, 1, "Option");
+                    let ta = ts_type_assoc(&targs[0]);
+                    return (format!("{}|null", use_paren(ta, Assoc::Or)), Assoc::Or);
                 }
                 "Vec" => {
-                    if let PathArguments::AngleBracketed(args) = &p.path.segments[0].arguments {
-                        if let syn::GenericArgument::Type(t) = &args.args[0] {
-                            let ta = ts_type_assoc(&t);
-                            return (
-                                format!("{}[]", use_paren(ta, Assoc::Brackets)),
-                                Assoc::Brackets,
-                            );
-                        }
-                    }
-                    panic!("not expected");
+                    let targs = gen_args(p, 1, "Vec");
+                    let ta = ts_type_assoc(&targs[0]);
+                    return (format!("{}[]", use_paren(ta, Assoc::Vec)), Assoc::Vec);
                 }
                 "HashMap" => {
-                    if let PathArguments::AngleBracketed(args) = &p.path.segments[0].arguments {
-                        if let syn::GenericArgument::Type(tk) = &args.args[0] {
-                            if let syn::GenericArgument::Type(tv) = &args.args[1] {
-                                let (tks, _) = ts_type_assoc(&tk);
-                                let (tvs, _) = ts_type_assoc(&tv);
-                                return (format!("Record<{}, {}>", tks, tvs), Assoc::Single);
-                            }
-                        }
-                    }
-                    panic!("not expected");
+                    let targs = gen_args(p, 2, "HashMap");
+                    let (tks, _) = ts_type_assoc(&targs[0]);
+                    let (tvs, _) = ts_type_assoc(&targs[1]);
+                    return (format!("Record<{}, {}>", tks, tvs), Assoc::Single);
                 }
                 s => single(s),
             },
@@ -117,4 +115,99 @@ pub fn ts_type(ty: &syn::Type) -> String {
         }
     }
     ts_type_assoc(ty).0
+}
+
+/// Returns the signature of the given Rust `method`.
+/// The resulting TypeScript binding is a valid method definition expected by the NEAR RPC.
+/// Thus, the following conversion are applied:
+/// - Function arguments are packed into a single TypeScript object argument
+/// - Return type is wrapped into a `Promise`
+/// - Types are converted using `ts_type`
+///
+/// ## Examples
+///
+/// ```
+/// use syn::parse_str;
+/// use near_syn::ts::ts_sig;
+///
+/// assert_eq!(ts_sig(&parse_str("fn a() {}").unwrap()), "a(): Promise<void>;");
+/// assert_eq!(ts_sig(&parse_str("fn b(x: U128) {}").unwrap()), "b(args: { x: U128 }): Promise<void>;");
+/// assert_eq!(ts_sig(&parse_str("fn c(x: U128, y: String) -> Vec<Token> {}").unwrap()), "c(args: { x: U128, y: string }): Promise<Token[]>;");
+/// assert_eq!(ts_sig(&parse_str("fn d(x: U128, y: String, z: Option<U64>) -> Vec<Token> {}").unwrap()), "d(args: { x: U128, y: string, z: U64|null }): Promise<Token[]>;");
+/// ```
+pub fn ts_sig(method: &ImplItemMethod) -> String {
+    let mut args = Vec::new();
+    for arg in method.sig.inputs.iter() {
+        match arg {
+            syn::FnArg::Typed(pat_type) => {
+                if let syn::Pat::Ident(pat_ident) = pat_type.pat.deref() {
+                    let type_name = if let syn::Type::Path(_type_path) = &*pat_type.ty {
+                        ts_type(&pat_type.ty)
+                    } else {
+                        panic!("not support sig type");
+                    };
+                    let arg_ident = &pat_ident.ident;
+                    args.push(format!("{}: {}", arg_ident, type_name));
+                }
+            }
+            _ => {}
+        }
+    }
+
+    let ret_type = match &method.sig.output {
+        syn::ReturnType::Default => "void".to_string(),
+        syn::ReturnType::Type(_, typ) => ts_type(typ.deref()),
+    };
+
+    let args_decl = if args.len() == 0 {
+        "".to_string()
+    } else {
+        format!("args: {{ {} }}", args.join(", "))
+    };
+    format!(
+        "{}({}): Promise<{}>;",
+        method.sig.ident, args_decl, ret_type
+    )
+}
+
+#[cfg(test)]
+mod tests {
+
+    use crate::ts::ts_type;
+
+    #[test]
+    #[should_panic(expected = "Option used with no generic arg")]
+    fn ts_type_on_option_with_no_args_should_panic() {
+        ts_type(&syn::parse_str("Option").unwrap());
+    }
+
+    #[test]
+    #[should_panic(expected = "Option expects 1 generic(s) argument(s), found 2")]
+    fn ts_type_on_option_with_more_than_one_arg_should_panic() {
+        ts_type(&syn::parse_str("Option<String, U128>").unwrap());
+    }
+
+    #[test]
+    #[should_panic(expected = "Vec used with no generic arg")]
+    fn ts_type_on_vec_with_no_args_should_panic() {
+        ts_type(&syn::parse_str("Vec").unwrap());
+    }
+
+    #[test]
+    #[should_panic(expected = "Vec expects 1 generic(s) argument(s), found 3")]
+    fn ts_type_on_vec_with_more_than_one_arg_should_panic() {
+        ts_type(&syn::parse_str("Vec<String, U128, u32>").unwrap());
+    }
+
+    #[test]
+    #[should_panic(expected = "HashMap used with no generic arguments")]
+    fn ts_type_on_hashmap_with_no_args_should_panic() {
+        ts_type(&syn::parse_str("HashMap").unwrap());
+    }
+
+    #[test]
+    #[should_panic(expected = "HashMap expects 2 generic(s) argument(s), found 1")]
+    fn ts_type_on_hashmap_with_less_than_two_args_should_panic() {
+        ts_type(&syn::parse_str("HashMap<U64>").unwrap());
+    }
 }

@@ -3,11 +3,12 @@
 use chrono::Utc;
 use clap::{AppSettings, Clap};
 use near_syn::{
-    derives, extract_docs, has_attr, is_mut, is_public, join_path, parse_rust, ts::ts_type,
+    derives, extract_docs, has_attr, is_mut, is_public, join_path, parse_rust,
+    ts::{ts_sig, ts_type},
 };
-use std::{env, ops::Deref};
+use std::env;
 use syn::{
-    File, ImplItem, ImplItemMethod,
+    File, ImplItem,
     Item::{Enum, Impl, Struct, Type},
     ItemImpl, ItemStruct,
 };
@@ -189,45 +190,9 @@ impl<T: std::io::Write> TS<T> {
                         self.view_methods.push(method.sig.ident.to_string());
                     }
                     extract_docs(&method.attrs, "    ");
-                    let sig = self.extract_sig(&method);
-                    ln!(self, "    {}\n", sig);
+                    ln!(self, "    {}\n", ts_sig(&method));
                 }
             }
         }
-    }
-
-    fn extract_sig(&self, method: &ImplItemMethod) -> String {
-        let mut args = Vec::new();
-        for arg in method.sig.inputs.iter() {
-            match arg {
-                syn::FnArg::Typed(pat_type) => {
-                    if let syn::Pat::Ident(pat_ident) = pat_type.pat.deref() {
-                        let type_name = if let syn::Type::Path(_type_path) = &*pat_type.ty {
-                            ts_type(&pat_type.ty)
-                        } else {
-                            panic!("not support sig type");
-                        };
-                        let arg_ident = &pat_ident.ident;
-                        args.push(format!("{}: {}", arg_ident, type_name));
-                    }
-                }
-                _ => {}
-            }
-        }
-
-        let ret_type = match &method.sig.output {
-            syn::ReturnType::Default => "void".to_string(),
-            syn::ReturnType::Type(_, typ) => ts_type(typ.deref()),
-        };
-
-        let args_decl = if args.len() == 0 {
-            "".to_string()
-        } else {
-            format!("args: {{ {} }}", args.join(", "))
-        };
-        format!(
-            "{}({}): Promise<{}>;",
-            method.sig.ident, args_decl, ret_type
-        )
     }
 }
