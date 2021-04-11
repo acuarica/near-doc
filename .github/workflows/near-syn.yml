@@ -1,0 +1,38 @@
+name: near-syn CI
+
+on:
+  # We want to trigger the build & test pipelines in every branch.
+  push:
+    # But do no run the pipeline when only `md` files are modified.
+    paths-ignore:
+      - '**.md'
+
+env:
+  # Enables color display for `cargo`
+  CARGO_TERM_COLOR: always
+
+jobs:
+
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - uses: actions/cache@v2
+      with:
+        path: |
+          ~/.cargo/registry
+          target
+        key: ${{ runner.os }}-cargo-${{ hashFiles('Cargo.lock') }}
+    - run: cargo build --release
+
+  test:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - uses: actions/cache@v2
+      with:
+        path: |
+          ~/.cargo/registry
+          target
+        key: ${{ runner.os }}-cargo-${{ hashFiles('Cargo.lock') }}
+    - run: cargo test
