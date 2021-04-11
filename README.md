@@ -1,6 +1,6 @@
 # near-syn
 
-![Build Status](https://github.com/acuarica/near-syn/actions/workflows/near-syn.yml/badge.svg)
+[![Build Status](https://github.com/acuarica/near-syn/actions/workflows/near-syn.yml/badge.svg)](https://github.com/acuarica/near-syn/actions/)
 
 `near-syn` is a library and command line utilities to
 make contract development for the NEAR platform easier.
