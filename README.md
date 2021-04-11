@@ -15,7 +15,13 @@ The `near-syn` package contains two command line utilities:
 
 ## Installation
 
-To install the `near-syn` package
+To install the `near-syn` command line utilities use
+
+```sh
+cargo install near-syn
+```
+
+Or alternatively you can install it directly from GitHub
 
 ```sh
 cargo install --git https://github.com/acuarica/near-syn --branch main
