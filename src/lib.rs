@@ -1,10 +1,15 @@
 #![deny(warnings)]
+// #![warn(missing_docs)]
+
+pub mod ts;
 
 use std::{fs::File, io::Read, path::Path};
 use syn::{
     Attribute, FnArg, ImplItemMethod, Lit, Meta, MetaList, MetaNameValue, NestedMeta, Visibility,
 };
 
+/// Returns the Rust syntax tree for the given `file_name` path.
+/// Panics if the file cannot be open or the file has syntax errors.
 pub fn parse_rust<S: AsRef<Path>>(file_name: S) -> syn::File {
     let mut file = File::open(file_name).expect("Unable to open file");
     let mut src = String::new();
@@ -21,6 +26,8 @@ pub fn join_path(path: &syn::Path) -> String {
         .join("::")
 }
 
+/// Returns `true` if the `method` is explicitly marked as `pub`.
+/// Returns `false` otherwise.
 pub fn is_public(method: &ImplItemMethod) -> bool {
     match method.vis {
         Visibility::Public(_) => true,
@@ -37,6 +44,9 @@ pub fn has_attr(attrs: &Vec<Attribute>, attr_name: &str) -> bool {
     false
 }
 
+/// Returns `true` if the item has any derive attribute 
+/// `macro_name`.
+/// Returns `false` otherwise.
 pub fn derives(attrs: &Vec<Attribute>, macro_name: &str) -> bool {
     for attr in attrs {
         if attr.path.is_ident("derive") {

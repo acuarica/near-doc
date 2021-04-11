@@ -63,7 +63,6 @@ fn basic_output() {
     use std::io::Write;
     use tempfile::NamedTempFile;
 
-    // let mut file = tempfile().unwrap();
     let mut file = NamedTempFile::new().unwrap();
     writeln!(
         file,

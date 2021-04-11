@@ -2,12 +2,14 @@
 
 use chrono::Utc;
 use clap::{AppSettings, Clap};
-use near_syn::{derives, extract_docs, has_attr, is_mut, is_public, join_path, parse_rust};
+use near_syn::{
+    derives, extract_docs, has_attr, is_mut, is_public, join_path, parse_rust, ts::ts_type,
+};
 use std::{env, ops::Deref};
 use syn::{
     File, ImplItem, ImplItemMethod,
     Item::{Enum, Impl, Struct, Type},
-    ItemImpl, ItemStruct, PathArguments,
+    ItemImpl, ItemStruct,
 };
 
 #[derive(Clap)]
@@ -25,23 +27,10 @@ struct Args {
 fn main() {
     let args = Args::parse();
 
+    let mut ts = TS::new(std::io::stdout());
     let now = args.now.unwrap_or_else(|| Utc::now().to_string());
-    println!(
-        "// TypeScript bindings generated with {} v{} {} on {}\n",
-        env!("CARGO_BIN_NAME"),
-        env!("CARGO_PKG_VERSION"),
-        env!("CARGO_PKG_REPOSITORY"),
-        now
-    );
+    ts.ts_prelude(now);
 
-    println!("// Exports common NEAR Rust SDK types");
-    println!("export type U64 = string;");
-    println!("export type U128 = string;");
-    println!("export type AccountId = string;");
-    println!("export type ValidAccountId = string;");
-    println!("");
-
-    let mut ts = TS::new();
     for file_name in args.files {
         let ast = parse_rust(file_name);
         ts.ts_unit(&ast);
@@ -50,26 +39,53 @@ fn main() {
     ts.ts_contract_methods();
 }
 
-struct TS {
+struct TS<T> {
     name: String,
     interfaces: Vec<String>,
     view_methods: Vec<String>,
     change_methods: Vec<String>,
+    file: T,
 }
 
-impl TS {
-    fn new() -> Self {
+macro_rules! ln {
+    ($this:ident, $($arg:tt)*) => ({
+        writeln!($this.file, $($arg)*).unwrap()
+    })
+}
+
+impl<T: std::io::Write> TS<T> {
+    fn new(file: T) -> Self {
         Self {
             name: String::new(),
             interfaces: Vec::new(),
             view_methods: Vec::new(),
             change_methods: Vec::new(),
+            file,
         }
     }
 
-    fn ts_main_type(&self) {
+    fn ts_prelude(&mut self, now: String) {
+        ln!(
+            self,
+            "// TypeScript bindings generated with {} v{} {} on {}\n",
+            env!("CARGO_BIN_NAME"),
+            env!("CARGO_PKG_VERSION"),
+            env!("CARGO_PKG_REPOSITORY"),
+            now
+        );
+
+        ln!(self, "// Exports common NEAR Rust SDK types");
+        ln!(self, "export type U64 = string;");
+        ln!(self, "export type U128 = string;");
+        ln!(self, "export type AccountId = string;");
+        ln!(self, "export type ValidAccountId = string;");
+        ln!(self, "");
+    }
+
+    fn ts_main_type(&mut self) {
         if !self.name.is_empty() && !self.interfaces.is_empty() {
-            println!(
+            ln!(
+                self,
                 "export type {} = {};\n",
                 self.name,
                 self.interfaces.join(" & ")
@@ -77,8 +93,8 @@ impl TS {
         }
     }
 
-    fn ts_contract_methods(&self) {
-        fn pack(methods: &Vec<String>) -> String {
+    fn ts_contract_methods(&mut self) {
+        fn fmt(methods: &Vec<String>) -> String {
             methods
                 .iter()
                 .map(|m| format!("        {:?},\n", m))
@@ -86,10 +102,18 @@ impl TS {
                 .join("")
         }
 
-        println!("export const {}Methods = {{", self.name);
-        println!("    viewMethods: [\n{}    ],", pack(&self.view_methods));
-        println!("    changeMethods: [\n{}    ],", pack(&self.change_methods));
-        println!("}};");
+        ln!(self, "export const {}Methods = {{", self.name);
+        ln!(
+            self,
+            "    viewMethods: [\n{}    ],",
+            fmt(&self.view_methods)
+        );
+        ln!(
+            self,
+            "    changeMethods: [\n{}    ],",
+            fmt(&self.change_methods)
+        );
+        ln!(self, "}};");
     }
 
     fn ts_unit(&mut self, ast: &File) {
@@ -101,19 +125,19 @@ impl TS {
                         if let Some((_, trait_path, _)) = &impl_item.trait_ {
                             let trait_name = join_path(trait_path);
                             self.interfaces.push(trait_name.clone());
-                            println!("export interface {} {{", trait_name);
+                            ln!(self, "export interface {} {{", trait_name);
                         } else {
                             if let syn::Type::Path(type_path) = &*impl_item.self_ty {
                                 self.name = join_path(&type_path.path);
                                 self.interfaces.push("Self".to_string());
-                                println!("export interface Self {{");
+                                ln!(self, "export interface Self {{");
                             } else {
                                 panic!("name not found")
                             }
                         }
 
                         self.ts_methods(&impl_item);
-                        println!("}}\n");
+                        ln!(self, "}}\n");
                     }
                 }
                 Type(item_type) => self.ts_typedef(&item_type),
@@ -129,72 +153,30 @@ impl TS {
         }
     }
 
-    fn ts_typedef(&self, item_type: &syn::ItemType) {
-        println!(
+    fn ts_typedef(&mut self, item_type: &syn::ItemType) {
+        ln!(
+            self,
             "export type {} = {};",
             item_type.ident,
-            self.ts_type(&item_type.ty)
+            ts_type(&item_type.ty)
         );
-        println!("");
+        ln!(self, "");
     }
 
-    fn ts_struct(&self, item_struct: &ItemStruct) {
+    fn ts_struct(&mut self, item_struct: &ItemStruct) {
         extract_docs(&item_struct.attrs, "");
-        println!("export interface {} {{", item_struct.ident);
+        ln!(self, "export interface {} {{", item_struct.ident);
         for field in &item_struct.fields {
             if let Some(field_name) = &field.ident {
-                let ty = self.ts_type(&field.ty);
+                let ty = ts_type(&field.ty);
                 extract_docs(&field.attrs, "    ");
-                println!("    {}: {};", field_name, ty);
+                ln!(self, "    {}: {};", field_name, ty);
             } else {
                 panic!("tuple struct no supported");
             }
         }
-        println!("}}");
-        println!("");
-    }
-
-    fn ts_type(&self, ty: &syn::Type) -> String {
-        match ty {
-            syn::Type::Path(p) => match join_path(&p.path).as_str() {
-                "u32" => "number".to_string(),
-                "u64" => "number".to_string(),
-                "String" => "string".to_string(),
-                "Option" => {
-                    if let PathArguments::AngleBracketed(args) = &p.path.segments[0].arguments {
-                        if let syn::GenericArgument::Type(t) = &args.args[0] {
-                            return format!("{}|null", self.ts_type(&t));
-                        }
-                    }
-                    panic!("not expected");
-                }
-                "Vec" => {
-                    if let PathArguments::AngleBracketed(args) = &p.path.segments[0].arguments {
-                        if let syn::GenericArgument::Type(t) = &args.args[0] {
-                            return format!("{}[]", self.ts_type(&t));
-                        }
-                    }
-                    panic!("not expected");
-                }
-                "HashMap" => {
-                    if let PathArguments::AngleBracketed(args) = &p.path.segments[0].arguments {
-                        if let syn::GenericArgument::Type(tk) = &args.args[0] {
-                            if let syn::GenericArgument::Type(tv) = &args.args[1] {
-                                return format!(
-                                    "Record<{}, {}>",
-                                    self.ts_type(&tk),
-                                    self.ts_type(tv)
-                                );
-                            }
-                        }
-                    }
-                    panic!("not expected");
-                }
-
-                s => s.to_string(),
-            },
-            _ => panic!("type not supported"),
-        }
+        ln!(self, "}}");
+        ln!(self, "");
     }
 
     fn ts_methods(&mut self, input: &ItemImpl) {
@@ -208,7 +190,7 @@ impl TS {
                     }
                     extract_docs(&method.attrs, "    ");
                     let sig = self.extract_sig(&method);
-                    println!("    {}\n", sig);
+                    ln!(self, "    {}\n", sig);
                 }
             }
         }
@@ -221,7 +203,7 @@ impl TS {
                 syn::FnArg::Typed(pat_type) => {
                     if let syn::Pat::Ident(pat_ident) = pat_type.pat.deref() {
                         let type_name = if let syn::Type::Path(_type_path) = &*pat_type.ty {
-                            self.ts_type(&pat_type.ty)
+                            ts_type(&pat_type.ty)
                         } else {
                             panic!("not support sig type");
                         };
@@ -235,7 +217,7 @@ impl TS {
 
         let ret_type = match &method.sig.output {
             syn::ReturnType::Default => "void".to_string(),
-            syn::ReturnType::Type(_, typ) => self.ts_type(typ.deref()),
+            syn::ReturnType::Type(_, typ) => ts_type(typ.deref()),
         };
 
         let args_decl = if args.len() == 0 {
