@@ -67,9 +67,30 @@ fn basic_output() {
     writeln!(
         file,
         r#"
+/// Doc-comment line 1 for A
+/// Doc-comment line 2 for A
+/// Doc-comment line 3 for A
 #[derive(Serialize)]
 struct A {{
-    field: U64,
+    // No doc-comment for this field
+    a1_field: U64,
+    a2_field: U64,
+
+    /// Line for a3
+    /// Line for a2, then blank line
+    ///
+    /// Some markdown
+    /// ```
+    /// const a = [];
+    /// const b = "";
+    /// ```
+    a3_field: U128,
+}}
+
+// No doc-comment for this struct
+#[derive(Serialize)]
+struct B {{
+    b: U64,
 }}
 
 #[near_bindgen]
@@ -79,9 +100,13 @@ struct C {{
 
 #[near_bindgen]
 impl C {{
+    /// Line 1 for get_f128 first
+    /// Line 2 for get_f128 second
     pub fn get_f128(&self) -> U128 {{
         self.f128
     }}
+
+    // Regular comments are not transpiled
     pub fn set_f128(&mut self, value: U128) {{
         self.f128 = value;
     }}
@@ -89,8 +114,16 @@ impl C {{
 
 #[near_bindgen]
 impl I for C {{
-    pub fn get(&self) -> U128 {{
+    /// Single-line comment for get
+    fn get(&self) -> U128 {{
         self.f128
+    }}
+}}
+
+// Omitted since near-bindgen is not present
+impl J for C {{
+    fn m() {{
+
     }}
 }}
 "#
@@ -105,15 +138,46 @@ impl I for C {{
         .code(0)
         .stdout(output(r#"
 /**
+ *  Doc-comment line 1 for A
+ *  Doc-comment line 2 for A
+ *  Doc-comment line 3 for A
  */
 export interface A {
     /**
      */
-    field: U64;
+    a1_field: U64;
+
+    /**
+     */
+    a2_field: U64;
+
+    /**
+     *  Line for a3
+     *  Line for a2, then blank line
+     * 
+     *  Some markdown
+     *  ```
+     *  const a = [];
+     *  const b = "";
+     *  ```
+     */
+    a3_field: U128;
+
+}
+
+/**
+ */
+export interface B {
+    /**
+     */
+    b: U64;
+
 }
 
 export interface Self {
     /**
+     *  Line 1 for get_f128 first
+     *  Line 2 for get_f128 second
      */
     get_f128(): Promise<U128>;
 
@@ -125,6 +189,7 @@ export interface Self {
 
 export interface I {
     /**
+     *  Single-line comment for get
      */
     get(): Promise<U128>;
 

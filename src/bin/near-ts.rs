@@ -170,7 +170,7 @@ impl<T: std::io::Write> TS<T> {
             if let Some(field_name) = &field.ident {
                 let ty = ts_type(&field.ty);
                 extract_docs(&field.attrs, "    ");
-                ln!(self, "    {}: {};", field_name, ty);
+                ln!(self, "    {}: {};\n", field_name, ty);
             } else {
                 panic!("tuple struct no supported");
             }
