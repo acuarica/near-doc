@@ -9,6 +9,32 @@ use syn::{
     Attribute, FnArg, ImplItemMethod, Lit, Meta, MetaList, MetaNameValue, NestedMeta, Visibility,
 };
 
+/// Defines the `Args` to be used in binaries.
+#[macro_export]
+macro_rules! Args {
+    ($bin_name:expr) => {
+        #[derive(clap::Clap)]
+        #[clap(name = $bin_name, version = env!("CARGO_PKG_VERSION"), author = env!("CARGO_PKG_AUTHORS"))]
+        #[clap(setting = clap::AppSettings::ColoredHelp)]
+        struct Args {
+            /// Sets the time (any format) for generated output.
+            #[clap(long = "now")]
+            now: Option<String>,
+
+            #[clap()]
+            files: Vec<String>,
+        }
+        impl Args {
+            fn now(&mut self) -> String {
+                if self.now.is_none() {
+                    self.now = Some(Utc::now().to_string());
+                }
+                self.now.clone().unwrap()
+            }
+        }
+    }
+}
+
 /// Returns the Rust syntax tree for the given `file_name` path.
 /// Panics if the file cannot be open or the file has syntax errors.
 pub fn parse_rust<S: AsRef<Path>>(file_name: S) -> syn::File {

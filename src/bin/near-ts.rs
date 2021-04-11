@@ -1,10 +1,11 @@
 #![deny(warnings)]
 
 use chrono::Utc;
-use clap::{AppSettings, Clap};
+use clap::Clap;
 use near_syn::{
     derives, extract_docs, has_attr, is_mut, is_public, join_path, parse_rust,
     ts::{ts_sig, ts_type},
+    Args,
 };
 use std::env;
 use syn::{
@@ -13,24 +14,12 @@ use syn::{
     ItemImpl, ItemStruct,
 };
 
-#[derive(Clap)]
-#[clap(name = env!("CARGO_BIN_NAME"), version = env!("CARGO_PKG_VERSION"), author = env!("CARGO_PKG_AUTHORS"))]
-#[clap(setting = AppSettings::ColoredHelp)]
-struct Args {
-    /// Sets the time (any format) for generated output.
-    #[clap(long = "now")]
-    now: Option<String>,
-
-    #[clap()]
-    files: Vec<String>,
-}
+Args!(env!("CARGO_BIN_NAME"));
 
 fn main() {
-    let args = Args::parse();
-
+    let mut args = Args::parse();
     let mut ts = TS::new(std::io::stdout());
-    let now = args.now.unwrap_or_else(|| Utc::now().to_string());
-    ts.ts_prelude(now);
+    ts.ts_prelude(args.now());
 
     for file_name in args.files {
         let ast = parse_rust(file_name);
