@@ -18,6 +18,7 @@ References
 - :bricks: Initialization method. Needs to be called right after deployment.
 - :eyeglasses: View only method, *i.e.*, does not modify the contract state.
 - :writing_hand: Call method, i.e., does modify the contract state.
+- &#x24C3; Payable method, i.e., method call needs to have an attached NEAR deposit.
 
 ---
 
@@ -76,9 +77,25 @@ Line 2 for get_f128 second
 ### :writing_hand: `set_f128`
 
 ```typescript
-set_f128(args: { value: U128 }): Promise<void>;
+set_f128(args: { value: U128 }, gas?: any): Promise<void>;
 ```
 
+Set f128.
+
+### :eyeglasses: `get_f128_other_way`
+
+```typescript
+get_f128_other_way(args: { key: U128 }): Promise<U128>;
+```
+
+
+### &#x24C3; `set_f128_with_sum`
+
+```typescript
+set_f128_with_sum(args: { a_value: U128, other_value: U128 }, gas?: any, amount?: any): Promise<void>;
+```
+
+Pay to set f128.
 
 ## Methods for `I` interface
 

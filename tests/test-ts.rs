@@ -71,7 +71,8 @@ fn transpile_single_rust_file_to_ts() {
     cmd.arg(path.to_str().unwrap())
         .assert()
         .code(0)
-        .stdout(output(r#"
+        .stdout(output(
+            r#"
 /**
  *  Doc-comment line 1 for A
  *  Doc-comment line 2 for A
@@ -117,8 +118,18 @@ export interface Self {
     get_f128(): Promise<U128>;
 
     /**
+     *  Set f128.
      */
-    set_f128(args: { value: U128 }): Promise<void>;
+    set_f128(args: { value: U128 }, gas?: any): Promise<void>;
+
+    /**
+     */
+    get_f128_other_way(args: { key: U128 }): Promise<U128>;
+
+    /**
+     *  Pay to set f128.
+     */
+    set_f128_with_sum(args: { a_value: U128, other_value: U128 }, gas?: any, amount?: any): Promise<void>;
 
 }
 
@@ -131,7 +142,11 @@ export interface I {
 }
 
 export type C = Self & I;
-"#, "C", "get_f128,get", "set_f128"));
+"#,
+            "C",
+            "get_f128,get_f128_other_way,get",
+            "set_f128,set_f128_with_sum",
+        ));
 
     path.close().unwrap();
 }

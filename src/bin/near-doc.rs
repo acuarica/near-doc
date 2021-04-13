@@ -2,7 +2,9 @@
 
 use chrono::Utc;
 use clap::Clap;
-use near_syn::{has_attr, is_mut, is_public, join_path, parse_rust, ts::ts_sig, write_docs, Args};
+use near_syn::{
+    has_attr, is_mut, is_payable, is_public, join_path, parse_rust, ts::ts_sig, write_docs, Args,
+};
 use std::{env, io};
 use syn::{ImplItem, Item::Impl, ItemImpl, Type};
 
@@ -23,6 +25,7 @@ fn main() {
     println!("- :bricks: Initialization method. Needs to be called right after deployment.");
     println!("- :eyeglasses: View only method, *i.e.*, does not modify the contract state.");
     println!("- :writing_hand: Call method, i.e., does modify the contract state.");
+    println!("- &#x24C3; Payable method, i.e., method call needs to have an attached NEAR deposit.");
 
     println!(
         "\n---\n\n*This documentation was generated with* **{} v{}** <{}> *on {}*",
@@ -60,7 +63,11 @@ fn methods(input: &ItemImpl) {
         if let ImplItem::Method(method) = impl_item {
             if is_public(method) || input.trait_.is_some() {
                 let mut mut_mod = if is_mut(&method) {
-                    ":writing_hand:"
+                    if is_payable(&method) {
+                        "&#x24C3;"
+                    } else {
+                        ":writing_hand:"
+                    }
                 } else {
                     ":eyeglasses:"
                 };

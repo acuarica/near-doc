@@ -159,14 +159,22 @@ pub fn ts_sig(method: &ImplItemMethod) -> String {
         syn::ReturnType::Type(_, typ) => ts_type(typ.deref()),
     };
 
-    let args_decl = if args.len() == 0 {
-        "".to_string()
-    } else {
-        format!("args: {{ {} }}", args.join(", "))
+    let mut args_decl = Vec::new();
+    if args.len() > 0 {
+        args_decl.push(format!("args: {{ {} }}", args.join(", ")));
     };
+    if crate::is_mut(&method) {
+        args_decl.push("gas?: any".into());
+    }
+    if crate::is_payable(&method) {
+        args_decl.push("amount?: any".into());
+    }
+
     format!(
         "{}({}): Promise<{}>;",
-        method.sig.ident, args_decl, ret_type
+        method.sig.ident,
+        args_decl.join(", "),
+        ret_type
     )
 }
 

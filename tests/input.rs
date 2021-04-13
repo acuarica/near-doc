@@ -46,11 +46,32 @@ impl C {{
     }}
 
     // Regular comments are not transpiled
+    /// Set f128.
     pub fn set_f128(&mut self, value: U128) {{
         self.f128 = value;
     }}
+
+    pub fn get_f128_other_way(&self, key: U128) -> U128 {{
+        self.f128 + key
+    }}
+
+    /// Pay to set f128.
+    #[payable]
+    pub fn set_f128_with_sum(&mut self, a_value: U128, other_value: U128) {{
+        self.f128 = a_value + other_value;
+    }}
+
+    fn private_method_not_exported(&self, value: U128) -> U128 {{
+        self.f128
+    }}
+
+    fn private_mut_method_not_exported(&mut self, value: U128) {{
+        self.f128 = value;
+    }}
+
 }}
 
+// All methods for traits are public, and thus exported
 #[near_bindgen]
 impl I for C {{
     /// Single-line comment for get
@@ -59,7 +80,7 @@ impl I for C {{
     }}
 }}
 
-// Omitted since near-bindgen is not present
+// Omitted since near-bindgen is not present, methods not exported
 impl J for C {{
     fn m() {{
 
