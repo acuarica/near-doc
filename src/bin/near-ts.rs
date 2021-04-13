@@ -3,7 +3,7 @@
 use chrono::Utc;
 use clap::Clap;
 use near_syn::{
-    derives, has_attr, is_mut, is_public, join_path, parse_rust,
+    derives, has_attr, is_init, is_mut, is_public, join_path, parse_rust,
     ts::{ts_sig, ts_type},
     write_docs, Args,
 };
@@ -175,10 +175,12 @@ impl<T: std::io::Write> TS<T> {
         for impl_item in input.items.iter() {
             if let ImplItem::Method(method) = impl_item {
                 if is_public(method) || input.trait_.is_some() {
-                    if is_mut(&method) || has_attr(&method.attrs, "init") {
-                        self.change_methods.push(method.sig.ident.to_string());
-                    } else {
-                        self.view_methods.push(method.sig.ident.to_string());
+                    if !is_init(&method) {
+                        if is_mut(&method) {
+                            self.change_methods.push(method.sig.ident.to_string());
+                        } else {
+                            self.view_methods.push(method.sig.ident.to_string());
+                        }
                     }
                     self.ts_doc(&method.attrs, "    ");
                     ln!(self, "    {}\n", ts_sig(&method));

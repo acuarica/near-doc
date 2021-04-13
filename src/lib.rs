@@ -78,9 +78,14 @@ pub fn has_attr(attrs: &Vec<Attribute>, attr_name: &str) -> bool {
     false
 }
 
-/// Returns whether the given `method` is marked as `payable`. 
+/// Returns whether the given `method` is marked as `payable`.
 pub fn is_payable(method: &ImplItemMethod) -> bool {
     has_attr(&method.attrs, "payable")
+}
+
+/// Returns whether the given `method` is marked as `init`.
+pub fn is_init(method: &ImplItemMethod) -> bool {
+    has_attr(&method.attrs, "init")
 }
 
 /// Returns `true` if any of the attributes under item derive from `macro_name`.

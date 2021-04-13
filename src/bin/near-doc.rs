@@ -3,7 +3,8 @@
 use chrono::Utc;
 use clap::Clap;
 use near_syn::{
-    has_attr, is_mut, is_payable, is_public, join_path, parse_rust, ts::ts_sig, write_docs, Args,
+    has_attr, is_init, is_mut, is_payable, is_public, join_path, parse_rust, ts::ts_sig,
+    write_docs, Args,
 };
 use std::{env, io};
 use syn::{ImplItem, Item::Impl, ItemImpl, Type};
@@ -22,10 +23,10 @@ fn main() {
     }
 
     println!("\n---\n\nReferences\n");
-    println!("- :bricks: Initialization method. Needs to be called right after deployment.");
+    println!("- :rocket: Initialization method. Needs to be called right after deployment.");
     println!("- :eyeglasses: View only method, *i.e.*, does not modify the contract state.");
     println!("- :writing_hand: Call method, i.e., does modify the contract state.");
-    println!("- &#x24C3; Payable method, i.e., method call needs to have an attached NEAR deposit.");
+    println!("- &#x24C3; Payable method, i.e., call needs to have an attached NEAR deposit.");
 
     println!(
         "\n---\n\n*This documentation was generated with* **{} v{}** <{}> *on {}*",
@@ -71,8 +72,8 @@ fn methods(input: &ItemImpl) {
                 } else {
                     ":eyeglasses:"
                 };
-                let init_decl = if has_attr(&method.attrs, "init") {
-                    mut_mod = ":bricks:";
+                let init_decl = if is_init(&method) {
+                    mut_mod = ":rocket:";
                     " (*constructor*)"
                 } else {
                     ""

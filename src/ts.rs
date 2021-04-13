@@ -2,7 +2,7 @@
 
 use std::ops::Deref;
 
-use syn::{ImplItemMethod, PathArguments};
+use syn::{ImplItemMethod, PathArguments, ReturnType};
 
 /// Return the TypeScript equivalent type of the Rust type represented by `ty`.
 /// Rust primitives types are included.
@@ -154,28 +154,32 @@ pub fn ts_sig(method: &ImplItemMethod) -> String {
         }
     }
 
-    let ret_type = match &method.sig.output {
-        syn::ReturnType::Default => "void".to_string(),
-        syn::ReturnType::Type(_, typ) => ts_type(typ.deref()),
-    };
+    if crate::is_init(&method) {
+        format!("{}: {{ {} }};", method.sig.ident, args.join(", "),)
+    } else {
+        let ret_type = match &method.sig.output {
+            ReturnType::Default => "void".into(),
+            ReturnType::Type(_, typ) => ts_type(typ.deref()),
+        };
 
-    let mut args_decl = Vec::new();
-    if args.len() > 0 {
-        args_decl.push(format!("args: {{ {} }}", args.join(", ")));
-    };
-    if crate::is_mut(&method) {
-        args_decl.push("gas?: any".into());
-    }
-    if crate::is_payable(&method) {
-        args_decl.push("amount?: any".into());
-    }
+        let mut args_decl = Vec::new();
+        if args.len() > 0 {
+            args_decl.push(format!("args: {{ {} }}", args.join(", ")));
+        };
+        if crate::is_mut(&method) {
+            args_decl.push("gas?: any".into());
+        }
+        if crate::is_payable(&method) {
+            args_decl.push("amount?: any".into());
+        }
 
-    format!(
-        "{}({}): Promise<{}>;",
-        method.sig.ident,
-        args_decl.join(", "),
-        ret_type
-    )
+        format!(
+            "{}({}): Promise<{}>;",
+            method.sig.ident,
+            args_decl.join(", "),
+            ret_type
+        )
+    }
 }
 
 #[cfg(test)]

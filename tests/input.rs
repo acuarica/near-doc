@@ -39,6 +39,14 @@ struct C {{
 
 #[near_bindgen]
 impl C {{
+    /// init func
+    #[init]
+    pub fn init_here(f128: U128) -> Self {{
+        Self {{
+            f128,
+        }}
+    }}
+
     /// Line 1 for get_f128 first
     /// Line 2 for get_f128 second
     pub fn get_f128(&self) -> U128 {{

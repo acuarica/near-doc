@@ -112,6 +112,11 @@ export interface B {
 
 export interface Self {
     /**
+     *  init func
+     */
+    init_here: { f128: U128 };
+
+    /**
      *  Line 1 for get_f128 first
      *  Line 2 for get_f128 second
      */
