@@ -47,13 +47,13 @@ fn check_version() {
 }
 
 #[test]
-fn zero_rust_files() {
+fn transpile_zero_rust_files_to_doc() {
     let mut cmd = near_doc();
     cmd.assert().code(0).stdout(output(""));
 }
 
 #[test]
-fn single_rust_file() {
+fn transpile_single_rust_file_to_doc() {
     let path = rust_test_file();
 
     let mut cmd = near_doc();

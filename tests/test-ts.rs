@@ -11,7 +11,9 @@ fn output(defs: &str, name: &str, view_methods: &str, change_methods: &str) -> S
 
 // Exports common NEAR Rust SDK types
 export type U64 = string;
+export type I64 = string;
 export type U128 = string;
+export type I128 = string;
 export type AccountId = string;
 export type ValidAccountId = string;
 {}
@@ -56,13 +58,13 @@ fn check_version() {
 }
 
 #[test]
-fn empty_files() {
+fn transpile_zero_rust_files_to_ts() {
     let mut cmd = near_ts();
     cmd.assert().code(0).stdout(output("", "", "", ""));
 }
 
 #[test]
-fn basic_output() {
+fn transpile_single_rust_file_to_ts() {
     let path = rust_test_file();
 
     let mut cmd = near_ts();

@@ -66,7 +66,9 @@ impl<T: std::io::Write> TS<T> {
 
         ln!(self, "// Exports common NEAR Rust SDK types");
         ln!(self, "export type U64 = string;");
+        ln!(self, "export type I64 = string;");
         ln!(self, "export type U128 = string;");
+        ln!(self, "export type I128 = string;");
         ln!(self, "export type AccountId = string;");
         ln!(self, "export type ValidAccountId = string;");
         ln!(self, "");
