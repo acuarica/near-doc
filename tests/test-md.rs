@@ -22,7 +22,7 @@ References
 
 ---
 
-*This documentation was generated with* **near-doc v{}** <{}> *on {}*
+*This documentation was generated with* **near-md v{}** <{}> *on {}*
 "#,
         NOW,
         text,
@@ -32,24 +32,24 @@ References
     )
 }
 
-fn near_doc() -> Command {
-    let mut cmd = Command::cargo_bin("near-doc").unwrap();
+fn near_md() -> Command {
+    let mut cmd = Command::cargo_bin("near-md").unwrap();
     cmd.arg("--now").arg(NOW);
     cmd
 }
 
 #[test]
 fn check_version() {
-    let mut cmd = near_doc();
+    let mut cmd = near_md();
     cmd.arg("--version")
         .assert()
         .code(0)
-        .stdout(format!("near-doc {}\n", env!("CARGO_PKG_VERSION")));
+        .stdout(format!("near-md {}\n", env!("CARGO_PKG_VERSION")));
 }
 
 #[test]
 fn transpile_zero_rust_files_to_doc() {
-    let mut cmd = near_doc();
+    let mut cmd = near_md();
     cmd.assert().code(0).stdout(output(""));
 }
 
@@ -57,7 +57,7 @@ fn transpile_zero_rust_files_to_doc() {
 fn transpile_single_rust_file_to_doc() {
     let path = rust_test_file();
 
-    let mut cmd = near_doc();
+    let mut cmd = near_md();
     cmd.arg(path.to_str().unwrap())
         .assert()
         .code(0)
@@ -94,6 +94,13 @@ Set f128.
 
 ```typescript
 get_f128_other_way(args: { key: U128 }): Promise<U128>;
+```
+
+
+### :writing_hand: `more_types`
+
+```typescript
+more_types(args: { key: U128, tuple: [string, number[]] }, gas?: any): Promise<void>;
 ```
 
 

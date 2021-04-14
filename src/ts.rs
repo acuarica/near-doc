@@ -2,7 +2,7 @@
 
 use std::ops::Deref;
 
-use syn::{ImplItemMethod, PathArguments, ReturnType};
+use syn::{ImplItemMethod, PathArguments, ReturnType, Type};
 
 /// Return the TypeScript equivalent type of the Rust type represented by `ty`.
 /// Rust primitives types and `String` are included.
@@ -46,6 +46,11 @@ use syn::{ImplItemMethod, PathArguments, ReturnType};
 /// assert_eq!(ts_type(&parse_str("Option<Vec<U128>>").unwrap()), "U128[]|null");
 /// assert_eq!(ts_type(&parse_str("Option<Option<U64>>").unwrap()), "U64|null|null");
 /// assert_eq!(ts_type(&parse_str("Vec<Vec<U64>>").unwrap()), "U64[][]");
+/// assert_eq!(ts_type(&parse_str("(U64)").unwrap()), "U64");
+/// assert_eq!(ts_type(&parse_str("(U64, String, Vec<u32>)").unwrap()), "[U64, string, number[]]");
+///
+/// assert_eq!(ts_type(&parse_str("()").unwrap()), "void");
+/// // assert_eq!(ts_type(&parse_str("std::vec::Vec<U64>").unwrap()), "U64[]");
 /// ```
 ///
 /// ## Panics
@@ -53,7 +58,7 @@ use syn::{ImplItemMethod, PathArguments, ReturnType};
 /// Panics when standard library generics types are used incorrectly.
 /// For example `Option` or `HashMap<U64>`.
 /// This situation can only happen on Rust source files that were **not** type-checked by `rustc`.
-pub fn ts_type(ty: &syn::Type) -> String {
+pub fn ts_type(ty: &Type) -> String {
     #[derive(PartialEq, PartialOrd)]
     enum Assoc {
         Single,
@@ -70,7 +75,7 @@ pub fn ts_type(ty: &syn::Type) -> String {
             ta.0
         }
     }
-    fn gen_args<'a>(p: &'a syn::TypePath, nargs: usize, name: &str) -> Vec<&'a syn::Type> {
+    fn gen_args<'a>(p: &'a syn::TypePath, nargs: usize, name: &str) -> Vec<&'a Type> {
         if let PathArguments::AngleBracketed(args) = &p.path.segments[0].arguments {
             if args.args.len() != nargs {
                 panic!(
@@ -94,9 +99,9 @@ pub fn ts_type(ty: &syn::Type) -> String {
         }
     }
 
-    fn ts_type_assoc(ty: &syn::Type) -> (String, Assoc) {
+    fn ts_type_assoc(ty: &Type) -> (String, Assoc) {
         match ty {
-            syn::Type::Path(p) => match crate::join_path(&p.path).as_str() {
+            Type::Path(p) => match crate::join_path(&p.path).as_str() {
                 "bool" => single("boolean"),
                 "u64" => single("number"),
                 "i8" | "u8" | "i16" | "u16" | "i32" | "u32" => single("number"),
@@ -104,21 +109,34 @@ pub fn ts_type(ty: &syn::Type) -> String {
                 "Option" => {
                     let targs = gen_args(p, 1, "Option");
                     let ta = ts_type_assoc(&targs[0]);
-                    return (format!("{}|null", use_paren(ta, Assoc::Or)), Assoc::Or);
+                    (format!("{}|null", use_paren(ta, Assoc::Or)), Assoc::Or)
                 }
                 "Vec" | "HashSet" | "BTreeSet" => {
                     let targs = gen_args(p, 1, "Vec");
                     let ta = ts_type_assoc(&targs[0]);
-                    return (format!("{}[]", use_paren(ta, Assoc::Vec)), Assoc::Vec);
+                    (format!("{}[]", use_paren(ta, Assoc::Vec)), Assoc::Vec)
                 }
                 "HashMap" | "BTreeMap" => {
                     let targs = gen_args(p, 2, "HashMap");
                     let (tks, _) = ts_type_assoc(&targs[0]);
                     let (tvs, _) = ts_type_assoc(&targs[1]);
-                    return (format!("Record<{}, {}>", tks, tvs), Assoc::Single);
+                    (format!("Record<{}, {}>", tks, tvs), Assoc::Single)
                 }
                 s => single(s),
             },
+            Type::Paren(paren) => ts_type_assoc(paren.elem.as_ref()),
+            Type::Tuple(tuple) => {
+                if tuple.elems.is_empty() {
+                    ("void".into(), Assoc::Single)
+                } else {
+                    let mut tys = Vec::new();
+                    for elem_type in &tuple.elems {
+                        let (t, _) = ts_type_assoc(&elem_type);
+                        tys.push(t);
+                    }
+                    (format!("[{}]", tys.join(", ")), Assoc::Single)
+                }
+            }
             _ => panic!("type not supported"),
         }
     }
@@ -142,6 +160,11 @@ pub fn ts_type(ty: &syn::Type) -> String {
 /// assert_eq!(ts_sig(&parse_str("fn b(x: U128) {}").unwrap()), "b(args: { x: U128 }): Promise<void>;");
 /// assert_eq!(ts_sig(&parse_str("fn c(x: U128, y: String) -> Vec<Token> {}").unwrap()), "c(args: { x: U128, y: string }): Promise<Token[]>;");
 /// assert_eq!(ts_sig(&parse_str("fn d(x: U128, y: String, z: Option<U64>) -> Vec<Token> {}").unwrap()), "d(args: { x: U128, y: string, z: U64|null }): Promise<Token[]>;");
+/// assert_eq!(ts_sig(&parse_str("fn e(x: U128) -> () {}").unwrap()), "e(args: { x: U128 }): Promise<void>;");
+/// assert_eq!(ts_sig(&parse_str("fn f(paren: (String)) {}").unwrap()), "f(args: { paren: string }): Promise<void>;");
+/// assert_eq!(ts_sig(&parse_str("fn get(&self) -> u32 {}").unwrap()), "get(): Promise<number>;");
+/// assert_eq!(ts_sig(&parse_str("fn set(&mut self) {}").unwrap()), "set(gas?: any): Promise<void>;");
+/// assert_eq!(ts_sig(&parse_str("fn set_args(&mut self, x: u32) {}").unwrap()), "set_args(args: { x: number }, gas?: any): Promise<void>;");
 /// ```
 pub fn ts_sig(method: &ImplItemMethod) -> String {
     let mut args = Vec::new();
@@ -149,11 +172,7 @@ pub fn ts_sig(method: &ImplItemMethod) -> String {
         match arg {
             syn::FnArg::Typed(pat_type) => {
                 if let syn::Pat::Ident(pat_ident) = pat_type.pat.deref() {
-                    let type_name = if let syn::Type::Path(_type_path) = &*pat_type.ty {
-                        ts_type(&pat_type.ty)
-                    } else {
-                        panic!("not support sig type");
-                    };
+                    let type_name = ts_type(&pat_type.ty);
                     let arg_ident = &pat_ident.ident;
                     args.push(format!("{}: {}", arg_ident, type_name));
                 }

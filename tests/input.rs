@@ -63,6 +63,10 @@ impl C {{
         self.f128 + key
     }}
 
+    pub fn more_types(&mut self, key: U128, tuple: (String, BTreeSet<i32>) ) -> () {{
+        self.f128 = key;
+    }}
+
     /// Pay to set f128.
     #[payable]
     pub fn set_f128_with_sum(&mut self, a_value: U128, other_value: U128) {{

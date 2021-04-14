@@ -132,6 +132,10 @@ export interface Self {
     get_f128_other_way(args: { key: U128 }): Promise<U128>;
 
     /**
+     */
+    more_types(args: { key: U128, tuple: [string, number[]] }, gas?: any): Promise<void>;
+
+    /**
      *  Pay to set f128.
      */
     set_f128_with_sum(args: { a_value: U128, other_value: U128 }, gas?: any, amount?: any): Promise<void>;
@@ -150,7 +154,7 @@ export type C = Self & I;
 "#,
             "C",
             "get_f128,get_f128_other_way,get",
-            "set_f128,set_f128_with_sum",
+            "set_f128,more_types,set_f128_with_sum",
         ));
 
     path.close().unwrap();
