@@ -5,13 +5,18 @@ use std::ops::Deref;
 use syn::{ImplItemMethod, PathArguments, ReturnType};
 
 /// Return the TypeScript equivalent type of the Rust type represented by `ty`.
-/// Rust primitives types are included.
+/// Rust primitives types and `String` are included.
 ///
 /// ```
 /// use syn::parse_str;
 /// use near_syn::ts::ts_type;
 ///
 /// assert_eq!(ts_type(&parse_str("bool").unwrap()), "boolean");
+/// assert_eq!(ts_type(&parse_str("i8").unwrap()), "number");
+/// assert_eq!(ts_type(&parse_str("u8").unwrap()), "number");
+/// assert_eq!(ts_type(&parse_str("i16").unwrap()), "number");
+/// assert_eq!(ts_type(&parse_str("u16").unwrap()), "number");
+/// assert_eq!(ts_type(&parse_str("i32").unwrap()), "number");
 /// assert_eq!(ts_type(&parse_str("u32").unwrap()), "number");
 /// assert_eq!(ts_type(&parse_str("String").unwrap()), "string");
 /// ```
@@ -25,7 +30,10 @@ use syn::{ImplItemMethod, PathArguments, ReturnType};
 /// assert_eq!(ts_type(&parse_str("Option<U64>").unwrap()), "U64|null");
 /// assert_eq!(ts_type(&parse_str("Option<String>").unwrap()), "string|null");
 /// assert_eq!(ts_type(&parse_str("Vec<ValidAccountId>").unwrap()), "ValidAccountId[]");
+/// assert_eq!(ts_type(&parse_str("HashSet<ValidAccountId>").unwrap()), "ValidAccountId[]");
+/// assert_eq!(ts_type(&parse_str("BTreeSet<ValidAccountId>").unwrap()), "ValidAccountId[]");
 /// assert_eq!(ts_type(&parse_str("HashMap<AccountId, U128>").unwrap()), "Record<AccountId, U128>");
+/// assert_eq!(ts_type(&parse_str("BTreeMap<AccountId, U128>").unwrap()), "Record<AccountId, U128>");
 /// ```
 ///
 /// Rust nested types are converted to TypeScript as well.
@@ -90,20 +98,20 @@ pub fn ts_type(ty: &syn::Type) -> String {
         match ty {
             syn::Type::Path(p) => match crate::join_path(&p.path).as_str() {
                 "bool" => single("boolean"),
-                "u32" => single("number"),
                 "u64" => single("number"),
+                "i8" | "u8" | "i16" | "u16" | "i32" | "u32" => single("number"),
                 "String" => single("string"),
                 "Option" => {
                     let targs = gen_args(p, 1, "Option");
                     let ta = ts_type_assoc(&targs[0]);
                     return (format!("{}|null", use_paren(ta, Assoc::Or)), Assoc::Or);
                 }
-                "Vec" => {
+                "Vec" | "HashSet" | "BTreeSet" => {
                     let targs = gen_args(p, 1, "Vec");
                     let ta = ts_type_assoc(&targs[0]);
                     return (format!("{}[]", use_paren(ta, Assoc::Vec)), Assoc::Vec);
                 }
-                "HashMap" => {
+                "HashMap" | "BTreeMap" => {
                     let targs = gen_args(p, 2, "HashMap");
                     let (tks, _) = ts_type_assoc(&targs[0]);
                     let (tvs, _) = ts_type_assoc(&targs[1]);
