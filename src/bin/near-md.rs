@@ -3,8 +3,8 @@
 use chrono::Utc;
 use clap::Clap;
 use near_syn::{
-    has_attr, is_init, is_mut, is_payable, is_public, join_path, parse_rust, ts::ts_sig,
-    write_docs, Args,
+    has_attr, is_init, is_mut, is_payable, join_path, parse_rust, ts::ts_sig, write_docs, Args,
+    NearMethod,
 };
 use std::{env, io};
 use syn::{ImplItem, Item::Impl, ItemImpl, Type};
@@ -62,7 +62,7 @@ fn md(syntax: &syn::File) {
 fn methods(input: &ItemImpl) {
     for impl_item in input.items.iter() {
         if let ImplItem::Method(method) = impl_item {
-            if is_public(method) || input.trait_.is_some() {
+            if method.is_exported(input) {
                 let mut mut_mod = if is_mut(&method) {
                     if is_payable(&method) {
                         "&#x24C3;"

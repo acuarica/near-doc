@@ -73,6 +73,10 @@ impl C {{
         self.f128 = a_value + other_value;
     }}
 
+    #[private]
+    pub fn marked_as_private(&mut self) {{
+    }}
+
     fn private_method_not_exported(&self, value: U128) -> U128 {{
         self.f128
     }}

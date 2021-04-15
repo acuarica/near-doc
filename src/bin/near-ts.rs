@@ -3,9 +3,9 @@
 use chrono::Utc;
 use clap::Clap;
 use near_syn::{
-    derives, has_attr, is_init, is_mut, is_public, join_path, parse_rust,
+    derives, has_attr, is_init, is_mut, join_path, parse_rust,
     ts::{ts_sig, ts_type},
-    write_docs, Args,
+    write_docs, Args, NearMethod,
 };
 use std::env;
 use syn::{
@@ -174,7 +174,7 @@ impl<T: std::io::Write> TS<T> {
     fn ts_methods(&mut self, input: &ItemImpl) {
         for impl_item in input.items.iter() {
             if let ImplItem::Method(method) = impl_item {
-                if is_public(method) || input.trait_.is_some() {
+                if method.is_exported(input) {
                     if !is_init(&method) {
                         if is_mut(&method) {
                             self.change_methods.push(method.sig.ident.to_string());

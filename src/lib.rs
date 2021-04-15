@@ -1,6 +1,6 @@
 //! Provides function to deal with Rust syntax.
 #![deny(warnings)]
-#![warn(missing_docs)]
+// #![warn(missing_docs)]
 
 pub mod ts;
 
@@ -10,7 +10,8 @@ use std::{
     path::Path,
 };
 use syn::{
-    Attribute, FnArg, ImplItemMethod, Lit, Meta, MetaList, MetaNameValue, NestedMeta, Visibility,
+    Attribute, FnArg, ImplItemMethod, ItemImpl, Lit, Meta, MetaList, MetaNameValue, NestedMeta,
+    Visibility,
 };
 
 /// Defines the `Args` to be used in binaries.
@@ -58,15 +59,6 @@ pub fn join_path(path: &syn::Path) -> String {
         .join("::")
 }
 
-/// Returns `true` if the `method` is explicitly marked as `pub`.
-/// Returns `false` otherwise.
-pub fn is_public(method: &ImplItemMethod) -> bool {
-    match method.vis {
-        Visibility::Public(_) => true,
-        _ => false,
-    }
-}
-
 /// Returns `true` if `attrs` contain `attr_name`.
 /// Returns `false` otherwise.
 pub fn has_attr(attrs: &Vec<Attribute>, attr_name: &str) -> bool {
@@ -76,6 +68,41 @@ pub fn has_attr(attrs: &Vec<Attribute>, attr_name: &str) -> bool {
         }
     }
     false
+}
+
+pub trait NearMethod {
+    fn is_payable(&self) -> bool;
+    fn is_init(&self) -> bool;
+    fn is_private(&self) -> bool;
+    fn is_public(&self) -> bool;
+    fn is_exported(&self, input: &ItemImpl) -> bool;
+}
+
+impl NearMethod for ImplItemMethod {
+    fn is_payable(&self) -> bool {
+        has_attr(&self.attrs, "payable")
+    }
+
+    fn is_init(&self) -> bool {
+        has_attr(&self.attrs, "init")
+    }
+
+    fn is_private(self: &ImplItemMethod) -> bool {
+        has_attr(&self.attrs, "private")
+    }
+
+    /// Returns `true` if the `method` is explicitly marked as `pub`.
+    /// Returns `false` otherwise.
+    fn is_public(self: &ImplItemMethod) -> bool {
+        match self.vis {
+            Visibility::Public(_) => true,
+            _ => false,
+        }
+    }
+
+    fn is_exported(&self, input: &ItemImpl) -> bool {
+        (self.is_public() || input.trait_.is_some()) && !self.is_private()
+    }
 }
 
 /// Returns whether the given `method` is marked as `payable`.
