@@ -102,6 +102,16 @@ impl J for C {{
 
     }}
 }}
+
+// Omitted since even near-bindgen is present, methods are private
+#[near_bindgen]
+impl K for C {{
+    #[private]
+    fn p() {{
+
+    }}
+}}
+
 "#
     )
     .unwrap();

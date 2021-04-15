@@ -2,10 +2,7 @@
 
 use chrono::Utc;
 use clap::Clap;
-use near_syn::{
-    has_attr, is_init, is_mut, is_payable, join_path, parse_rust, ts::ts_sig, write_docs, Args,
-    NearMethod,
-};
+use near_syn::{join_path, parse_rust, ts::ts_sig, write_docs, Args, NearImpl, NearMethod};
 use std::{env, io};
 use syn::{ImplItem, Item::Impl, ItemImpl, Type};
 
@@ -42,7 +39,7 @@ fn md(syntax: &syn::File) {
 
     for item in &syntax.items {
         if let Impl(impl_item) = item {
-            if has_attr(&impl_item.attrs, "near_bindgen") {
+            if impl_item.is_bindgen() && impl_item.has_exported_methods() {
                 if let Some((_, trait_path, _)) = &impl_item.trait_ {
                     println!("\n## Methods for `{}` interface", join_path(trait_path));
                 } else {
@@ -63,8 +60,8 @@ fn methods(input: &ItemImpl) {
     for impl_item in input.items.iter() {
         if let ImplItem::Method(method) = impl_item {
             if method.is_exported(input) {
-                let mut mut_mod = if is_mut(&method) {
-                    if is_payable(&method) {
+                let mut mut_mod = if method.is_mut() {
+                    if method.is_payable() {
                         "&#x24C3;"
                     } else {
                         ":writing_hand:"
@@ -72,7 +69,7 @@ fn methods(input: &ItemImpl) {
                 } else {
                     ":eyeglasses:"
                 };
-                let init_decl = if is_init(&method) {
+                let init_decl = if method.is_init() {
                     mut_mod = ":rocket:";
                     " (*constructor*)"
                 } else {

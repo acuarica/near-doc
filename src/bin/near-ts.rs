@@ -3,9 +3,9 @@
 use chrono::Utc;
 use clap::Clap;
 use near_syn::{
-    derives, has_attr, is_init, is_mut, join_path, parse_rust,
+    join_path, parse_rust,
     ts::{ts_sig, ts_type},
-    write_docs, Args, NearMethod,
+    write_docs, Args, NearImpl, NearMethod, NearStruct,
 };
 use std::env;
 use syn::{
@@ -113,7 +113,7 @@ impl<T: std::io::Write> TS<T> {
             match item {
                 Enum(_) => {}
                 Impl(impl_item) => {
-                    if has_attr(&impl_item.attrs, "near_bindgen") {
+                    if impl_item.is_bindgen() && impl_item.has_exported_methods() {
                         if let Some((_, trait_path, _)) = &impl_item.trait_ {
                             let trait_name = join_path(trait_path);
                             self.interfaces.push(trait_name.clone());
@@ -134,9 +134,7 @@ impl<T: std::io::Write> TS<T> {
                 }
                 Type(item_type) => self.ts_typedef(&item_type),
                 Struct(item_struct) => {
-                    if derives(&item_struct.attrs, "Serialize")
-                        || derives(&item_struct.attrs, "Deserialize")
-                    {
+                    if item_struct.is_serde() {
                         self.ts_struct(&item_struct)
                     }
                 }
@@ -175,12 +173,13 @@ impl<T: std::io::Write> TS<T> {
         for impl_item in input.items.iter() {
             if let ImplItem::Method(method) = impl_item {
                 if method.is_exported(input) {
-                    if !is_init(&method) {
-                        if is_mut(&method) {
-                            self.change_methods.push(method.sig.ident.to_string());
+                    if !method.is_init() {
+                        if method.is_mut() {
+                            &mut self.change_methods
                         } else {
-                            self.view_methods.push(method.sig.ident.to_string());
+                            &mut self.view_methods
                         }
+                        .push(method.sig.ident.to_string());
                     }
                     self.ts_doc(&method.attrs, "    ");
                     ln!(self, "    {}\n", ts_sig(&method));

@@ -1,7 +1,7 @@
 //! Functions to transpile Rust to TypeScript.
 
+use crate::near_syn::NearMethod;
 use std::ops::Deref;
-
 use syn::{ImplItemMethod, PathArguments, ReturnType, Type};
 
 /// Return the TypeScript equivalent type of the Rust type represented by `ty`.
@@ -181,7 +181,7 @@ pub fn ts_sig(method: &ImplItemMethod) -> String {
         }
     }
 
-    if crate::is_init(&method) {
+    if method.is_init() {
         format!("{}: {{ {} }};", method.sig.ident, args.join(", "),)
     } else {
         let ret_type = match &method.sig.output {
@@ -193,10 +193,10 @@ pub fn ts_sig(method: &ImplItemMethod) -> String {
         if args.len() > 0 {
             args_decl.push(format!("args: {{ {} }}", args.join(", ")));
         };
-        if crate::is_mut(&method) {
+        if method.is_mut() {
             args_decl.push("gas?: any".into());
         }
-        if crate::is_payable(&method) {
+        if method.is_payable() {
             args_decl.push("amount?: any".into());
         }
 

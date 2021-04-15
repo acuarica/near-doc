@@ -1,18 +1,18 @@
 //! Provides function to deal with Rust syntax.
 #![deny(warnings)]
-// #![warn(missing_docs)]
+#![warn(missing_docs)]
 
+mod near_syn;
 pub mod ts;
+
+pub use crate::near_syn::*;
 
 use std::{
     fs::File,
     io::{Read, Write},
     path::Path,
 };
-use syn::{
-    Attribute, FnArg, ImplItemMethod, ItemImpl, Lit, Meta, MetaList, MetaNameValue, NestedMeta,
-    Visibility,
-};
+use syn::{Attribute, Lit, Meta, MetaNameValue};
 
 /// Defines the `Args` to be used in binaries.
 #[macro_export]
@@ -57,92 +57,6 @@ pub fn join_path(path: &syn::Path) -> String {
         .map(|seg| seg.ident.to_string())
         .collect::<Vec<String>>()
         .join("::")
-}
-
-/// Returns `true` if `attrs` contain `attr_name`.
-/// Returns `false` otherwise.
-pub fn has_attr(attrs: &Vec<Attribute>, attr_name: &str) -> bool {
-    for attr in attrs {
-        if attr.path.is_ident(attr_name) {
-            return true;
-        }
-    }
-    false
-}
-
-pub trait NearMethod {
-    fn is_payable(&self) -> bool;
-    fn is_init(&self) -> bool;
-    fn is_private(&self) -> bool;
-    fn is_public(&self) -> bool;
-    fn is_exported(&self, input: &ItemImpl) -> bool;
-}
-
-impl NearMethod for ImplItemMethod {
-    fn is_payable(&self) -> bool {
-        has_attr(&self.attrs, "payable")
-    }
-
-    fn is_init(&self) -> bool {
-        has_attr(&self.attrs, "init")
-    }
-
-    fn is_private(self: &ImplItemMethod) -> bool {
-        has_attr(&self.attrs, "private")
-    }
-
-    /// Returns `true` if the `method` is explicitly marked as `pub`.
-    /// Returns `false` otherwise.
-    fn is_public(self: &ImplItemMethod) -> bool {
-        match self.vis {
-            Visibility::Public(_) => true,
-            _ => false,
-        }
-    }
-
-    fn is_exported(&self, input: &ItemImpl) -> bool {
-        (self.is_public() || input.trait_.is_some()) && !self.is_private()
-    }
-}
-
-/// Returns whether the given `method` is marked as `payable`.
-pub fn is_payable(method: &ImplItemMethod) -> bool {
-    has_attr(&method.attrs, "payable")
-}
-
-/// Returns whether the given `method` is marked as `init`.
-pub fn is_init(method: &ImplItemMethod) -> bool {
-    has_attr(&method.attrs, "init")
-}
-
-/// Returns `true` if any of the attributes under item derive from `macro_name`.
-/// Returns `false` otherwise.
-pub fn derives(attrs: &Vec<Attribute>, macro_name: &str) -> bool {
-    for attr in attrs {
-        if attr.path.is_ident("derive") {
-            if let Ok(Meta::List(MetaList { nested, .. })) = attr.parse_meta() {
-                for elem in nested {
-                    if let NestedMeta::Meta(meta) = elem {
-                        if meta.path().is_ident(macro_name) {
-                            return true;
-                        }
-                    }
-                }
-            } else {
-                panic!("not expected");
-            }
-        }
-    }
-    false
-}
-
-/// Returns `true` if `method` is declared as `mut`.
-pub fn is_mut(method: &ImplItemMethod) -> bool {
-    if let Some(FnArg::Receiver(r)) = method.sig.inputs.iter().next() {
-        r.mutability.is_some()
-    } else {
-        false
-    }
 }
 
 /// Writes Rust `doc` comments to `file`.
