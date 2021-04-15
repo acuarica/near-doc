@@ -1,5 +1,5 @@
 use assert_cmd::Command;
-use input::rust_test_file;
+use input::rust_test_files;
 
 mod input;
 
@@ -65,10 +65,10 @@ fn transpile_zero_rust_files_to_ts() {
 
 #[test]
 fn transpile_single_rust_file_to_ts() {
-    let path = rust_test_file();
+    let paths = rust_test_files();
 
     let mut cmd = near_ts();
-    cmd.arg(path.to_str().unwrap())
+    cmd.arg(paths[0].to_str().unwrap())
         .assert()
         .code(0)
         .stdout(output(
@@ -157,5 +157,38 @@ export type C = Self & I;
             "set_f128,more_types,set_f128_with_sum",
         ));
 
-    path.close().unwrap();
+    paths.into_iter().for_each(|path| path.close().unwrap());
+}
+
+#[test]
+fn transpile_multiple_rust_files_to_ts() {
+    let paths = rust_test_files();
+
+    let mut cmd = near_ts();
+    cmd.args(&paths[1..]).assert().code(0).stdout(output(
+        r#"
+/**
+ */
+export interface S {
+    /**
+     */
+    f: number;
+
+}
+
+export interface Self {
+    /**
+     */
+    get(): Promise<number>;
+
+}
+
+export type S = Self;
+"#,
+        "S",
+        "get",
+        "",
+    ));
+
+    paths.into_iter().for_each(|path| path.close().unwrap());
 }

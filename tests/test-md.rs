@@ -1,5 +1,5 @@
 use assert_cmd::Command;
-use input::rust_test_file;
+use input::rust_test_files;
 
 mod input;
 
@@ -55,10 +55,10 @@ fn transpile_zero_rust_files_to_doc() {
 
 #[test]
 fn transpile_single_rust_file_to_doc() {
-    let path = rust_test_file();
+    let paths = rust_test_files();
 
     let mut cmd = near_md();
-    cmd.arg(path.to_str().unwrap())
+    cmd.arg(paths[0].to_str().unwrap())
         .assert()
         .code(0)
         .stdout(output(
@@ -124,5 +124,5 @@ Single-line comment for get
 "#,
         ));
 
-    path.close().unwrap();
+    paths.into_iter().for_each(|path| path.close().unwrap());
 }
