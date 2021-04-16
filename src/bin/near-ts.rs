@@ -57,7 +57,7 @@ impl<T: std::io::Write> TS<T> {
     fn ts_prelude(&mut self, now: String) {
         ln!(
             self,
-            "// TypeScript bindings generated with {} v{} {} on {}\n",
+            "// TypeScript bindings generated with {} v{} {}{}\n",
             env!("CARGO_BIN_NAME"),
             env!("CARGO_PKG_VERSION"),
             env!("CARGO_PKG_REPOSITORY"),

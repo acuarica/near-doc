@@ -3,11 +3,9 @@ use input::rust_test_files;
 
 mod input;
 
-const NOW: &str = "123";
-
 fn output(defs: &str, name: &str, view_methods: &str, change_methods: &str) -> String {
     format!(
-        r#"// TypeScript bindings generated with near-ts v{} {} on {}
+        r#"// TypeScript bindings generated with near-ts v{} {}
 
 // Exports common NEAR Rust SDK types
 export type U64 = string;
@@ -26,7 +24,6 @@ export const {}Methods = {{
 "#,
         env!("CARGO_PKG_VERSION"),
         env!("CARGO_PKG_REPOSITORY"),
-        NOW,
         defs,
         name,
         view_methods
@@ -44,7 +41,7 @@ export const {}Methods = {{
 
 fn near_ts() -> Command {
     let mut cmd = Command::cargo_bin("near-ts").unwrap();
-    cmd.arg("--now").arg(NOW);
+    cmd.arg("--no-now");
     cmd
 }
 

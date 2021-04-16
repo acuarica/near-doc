@@ -22,17 +22,22 @@ macro_rules! Args {
         #[clap(name = $bin_name, version = env!("CARGO_PKG_VERSION"), author = env!("CARGO_PKG_AUTHORS"))]
         #[clap(setting = clap::AppSettings::ColoredHelp)]
         struct Args {
-            /// Sets the time (any format) for generated output.
-            #[clap(long = "now")]
-            now: Option<String>,
+
+            /// Does not emit date/time information,
+            /// otherwise current time is being emitted
+            #[clap(long)]
+            no_now: bool,
 
             #[clap()]
             files: Vec<String>,
+
+            #[clap(skip)]
+            now: Option<String>,
         }
         impl Args {
             fn now(&mut self) -> String {
                 if self.now.is_none() {
-                    self.now = Some(Utc::now().to_string());
+                    self.now = Some(if self.no_now {"".to_string()} else {format!(" on {}",Utc::now().to_string())});
                 }
                 self.now.clone().unwrap()
             }
