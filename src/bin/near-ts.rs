@@ -114,6 +114,7 @@ impl<T: std::io::Write> TS<T> {
                 Enum(_) => {}
                 Impl(impl_item) => {
                     if impl_item.is_bindgen() && impl_item.has_exported_methods() {
+                        self.ts_doc(&impl_item.attrs, "");
                         if let Some((_, trait_path, _)) = &impl_item.trait_ {
                             let trait_name = join_path(trait_path);
                             self.interfaces.push(trait_name.clone());

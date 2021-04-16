@@ -116,6 +116,8 @@ export interface B {
 
 }
 
+/**
+ */
 export interface Self {
     /**
      *  init func
@@ -148,6 +150,8 @@ export interface Self {
 
 }
 
+/**
+ */
 export interface I {
     /**
      *  Single-line comment for get
@@ -182,6 +186,8 @@ export interface S {
 
 }
 
+/**
+ */
 export interface Self {
     /**
      */
