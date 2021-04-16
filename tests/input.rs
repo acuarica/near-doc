@@ -4,6 +4,12 @@ use tempfile::{NamedTempFile, TempPath};
 pub fn rust_test_files() -> Vec<TempPath> {
     vec![
         r#"
+
+type AType = i32;
+
+/// Doc-comments for a type def
+type BType = i32;
+
 /// Doc-comment line 1 for A
 /// Doc-comment line 2 for A
 /// Doc-comment line 3 for A

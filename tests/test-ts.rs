@@ -71,6 +71,15 @@ fn transpile_single_rust_file_to_ts() {
         .stdout(output(
             r#"
 /**
+ */
+export type AType = number;
+
+/**
+ *  Doc-comments for a type def
+ */
+export type BType = number;
+
+/**
  *  Doc-comment line 1 for A
  *  Doc-comment line 2 for A
  *  Doc-comment line 3 for A

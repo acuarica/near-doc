@@ -144,6 +144,7 @@ impl<T: std::io::Write> TS<T> {
     }
 
     fn ts_typedef(&mut self, item_type: &syn::ItemType) {
+        self.ts_doc(&item_type.attrs, "");
         ln!(
             self,
             "export type {} = {};",
