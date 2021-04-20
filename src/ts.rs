@@ -165,6 +165,7 @@ pub fn ts_type(ty: &Type) -> String {
 /// assert_eq!(ts_sig(&parse_str("fn get(&self) -> u32 {}").unwrap()), "get(): Promise<number>;");
 /// assert_eq!(ts_sig(&parse_str("fn set(&mut self) {}").unwrap()), "set(gas?: any): Promise<void>;");
 /// assert_eq!(ts_sig(&parse_str("fn set_args(&mut self, x: u32) {}").unwrap()), "set_args(args: { x: number }, gas?: any): Promise<void>;");
+/// assert_eq!(ts_sig(&parse_str("fn a() -> Promise {}").unwrap()), "a(): Promise<void>;");
 /// ```
 pub fn ts_sig(method: &ImplItemMethod) -> String {
     let mut args = Vec::new();
@@ -186,7 +187,14 @@ pub fn ts_sig(method: &ImplItemMethod) -> String {
     } else {
         let ret_type = match &method.sig.output {
             ReturnType::Default => "void".into(),
-            ReturnType::Type(_, typ) => ts_type(typ.deref()),
+            ReturnType::Type(_, typ) => {
+                let ty = ts_type(typ.deref());
+                if ty == "Promise" {
+                    "void".to_string()
+                } else {
+                    ty
+                }
+            }
         };
 
         let mut args_decl = Vec::new();
