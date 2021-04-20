@@ -195,6 +195,10 @@ export interface Self {
 
 }
 
+/**
+ */
+export type T = [number, boolean];
+
 export type S = Self;
 "#,
         "S",

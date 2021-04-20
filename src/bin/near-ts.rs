@@ -157,18 +157,33 @@ impl<T: std::io::Write> TS<T> {
 
     fn ts_struct(&mut self, item_struct: &ItemStruct) {
         self.ts_doc(&item_struct.attrs, "");
-        ln!(self, "export interface {} {{", item_struct.ident);
-        for field in &item_struct.fields {
-            if let Some(field_name) = &field.ident {
-                let ty = ts_type(&field.ty);
-                self.ts_doc(&field.attrs, "    ");
-                ln!(self, "    {}: {};\n", field_name, ty);
-            } else {
-                panic!("tuple struct no supported");
+        match &item_struct.fields {
+            syn::Fields::Named(fields) => {
+                ln!(self, "export interface {} {{", item_struct.ident);
+                for field in &fields.named {
+                    let field_name = field.ident.as_ref().unwrap();
+                    let ty = ts_type(&field.ty);
+                    self.ts_doc(&field.attrs, "    ");
+                    ln!(self, "    {}: {};\n", field_name, ty);
+                }
+                ln!(self, "}}");
+                ln!(self, "");
             }
+            syn::Fields::Unnamed(fields) => {
+                let mut tys = Vec::new();
+                for field in &fields.unnamed {
+                    let ty = ts_type(&field.ty);
+                    tys.push(ty);
+                }
+                ln!(
+                    self,
+                    "export type {} = [{}];\n",
+                    item_struct.ident,
+                    tys.join(", ")
+                );
+            }
+            syn::Fields::Unit => panic!("unit struct no supported"),
         }
-        ln!(self, "}}");
-        ln!(self, "");
     }
 
     fn ts_methods(&mut self, input: &ItemImpl) {

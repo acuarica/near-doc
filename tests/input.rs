@@ -130,6 +130,10 @@ impl S {
         self.f
     }
 }
+
+#[derive(Serialize)]
+struct T(u32, bool);
+
         "#,
     ]
     .into_iter()
