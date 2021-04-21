@@ -177,9 +177,13 @@ impl<T: std::io::Write> TS<T> {
                 }
                 ln!(
                     self,
-                    "export type {} = [{}];\n",
+                    "export type {} = {};\n",
                     item_struct.ident,
-                    tys.join(", ")
+                    if tys.len() == 1 {
+                        tys.get(0).unwrap().clone()
+                    } else {
+                        format!("[{}]", tys.join(", "))
+                    }
                 );
             }
             syn::Fields::Unit => panic!("unit struct no supported"),

@@ -199,6 +199,10 @@ export interface Self {
  */
 export type T = [number, boolean];
 
+/**
+ */
+export type U = AccountId;
+
 export type S = Self;
 "#,
         "S",

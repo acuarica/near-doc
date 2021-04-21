@@ -134,6 +134,9 @@ impl S {
 #[derive(Serialize)]
 struct T(u32, bool);
 
+#[derive(Serialize)]
+struct U(AccountId);
+
         "#,
     ]
     .into_iter()
