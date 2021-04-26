@@ -3,18 +3,22 @@
 use crate::{join_path, near_syn::NearMethod, write_docs, NearImpl, NearSerde};
 use std::ops::Deref;
 use syn::{
-    Attribute, File, ImplItem, ImplItemMethod, Item, ItemEnum, ItemImpl, ItemStruct, PathArguments,
-    ReturnType, Type,
+    Attribute, Fields, File, ImplItem, ImplItemMethod, Item, ItemEnum, ItemImpl, ItemStruct,
+    PathArguments, ReturnType, Type,
 };
 
-/// asdf
+/// Represents a pass to several Rust files to generate TypeScript bindings.
 pub struct TS<T> {
-    name: String,
+    /// Represents the name of the contract to export.
+    pub name: String,
     impl_count: u32,
-    interfaces: Vec<String>,
-    view_methods: Vec<String>,
-    change_methods: Vec<String>,
-    ///
+    /// interfaces
+    pub interfaces: Vec<String>,
+    /// view
+    pub view_methods: Vec<String>,
+    /// change
+    pub change_methods: Vec<String>,
+    /// Output buffer where to store the generated TypeScript bindings.
     pub buf: T,
 }
 
@@ -25,10 +29,10 @@ macro_rules! ln {
 }
 
 impl<T: std::io::Write> TS<T> {
-    /// ```
-    /// use near_syn::ts::TS;
+    /// Creates a new `TS` instance.
     ///
-    /// let mut ts = TS::new(Vec::new());
+    /// ```
+    /// let mut ts = near_syn::ts::TS::new(Vec::new());
     /// assert_eq!(String::from_utf8_lossy(&ts.buf), "");
     /// ```
     pub fn new(buf: T) -> Self {
@@ -42,7 +46,26 @@ impl<T: std::io::Write> TS<T> {
         }
     }
 
+    /// Exports common Near types.
+    ///
     /// ```
+    /// let mut ts = near_syn::ts::TS::new(Vec::new());
+    /// ts.ts_prelude(" 2021".to_string(), "bin");
+    /// assert_eq!(String::from_utf8_lossy(&ts.buf), format!(
+    /// r#"// TypeScript bindings generated with bin v{} {} 2021
+    ///
+    /// // Exports common NEAR Rust SDK types
+    /// export type U64 = string;
+    /// export type I64 = string;
+    /// export type U128 = string;
+    /// export type I128 = string;
+    /// export type AccountId = string;
+    /// export type ValidAccountId = string;
+    ///
+    /// "#,
+    ///   env!("CARGO_PKG_VERSION"),
+    ///   env!("CARGO_PKG_REPOSITORY"),
+    ///   ));
     /// ```
     pub fn ts_prelude(&mut self, now: String, bin_name: &str) {
         ln!(
@@ -64,12 +87,15 @@ impl<T: std::io::Write> TS<T> {
         ln!(self, "");
     }
 
-    /// ```
-    /// use near_syn::ts::TS;
+    /// Exports the main type implemented by the contract.
+    /// The `name` and `interfaces` must be set in order to export the main type.
     ///
-    /// let mut ts = TS::new(Vec::new());
+    /// ```
+    /// let mut ts = near_syn::ts::TS::new(Vec::new());
+    /// ts.name = "Contract".to_string();
+    /// ts.interfaces.push("Self0".to_string());
     /// ts.ts_main_type();
-    /// assert_eq!(String::from_utf8_lossy(&ts.buf), "");
+    /// assert_eq!(String::from_utf8_lossy(&ts.buf), "export type Contract = Self0;\n\n");
     /// ```
     pub fn ts_main_type(&mut self) {
         if !self.name.is_empty() && !self.interfaces.is_empty() {
@@ -82,7 +108,49 @@ impl<T: std::io::Write> TS<T> {
         }
     }
 
-    /// asfd
+    /// Exports the methods object required by `near-api-js` to be able
+    /// to find contract methods.
+    ///
+    /// ```
+    /// let mut ts = near_syn::ts::TS::new(Vec::new());
+    /// ts.name = "Contract".to_string();
+    /// ts.view_methods.push("get".to_string());
+    /// ts.change_methods.push("set".to_string());
+    /// ts.change_methods.push("insert".to_string());
+    /// ts.ts_contract_methods();
+    /// assert_eq!(String::from_utf8_lossy(&ts.buf),
+    /// r#"export const ContractMethods = {
+    ///     viewMethods: [
+    ///         "get",
+    ///     ],
+    ///     changeMethods: [
+    ///         "set",
+    ///         "insert",
+    ///     ],
+    /// };
+    /// "#);
+    /// ```
+    ///
+    /// Both `viewMethods` and `changeMethods` fields must be present in the
+    /// resulting object.
+    /// This is required by `near-api-js`.
+    /// For example,
+    ///
+    /// ```
+    /// let mut ts = near_syn::ts::TS::new(Vec::new());
+    /// ts.name = "Contract".to_string();
+    /// ts.view_methods.push("get".to_string());
+    /// ts.ts_contract_methods();
+    /// assert_eq!(String::from_utf8_lossy(&ts.buf),
+    /// r#"export const ContractMethods = {
+    ///     viewMethods: [
+    ///         "get",
+    ///     ],
+    ///     changeMethods: [
+    ///     ],
+    /// };
+    /// "#);
+    /// ```
     pub fn ts_contract_methods(&mut self) {
         fn fmt(methods: &Vec<String>) -> String {
             methods
@@ -106,48 +174,56 @@ impl<T: std::io::Write> TS<T> {
         ln!(self, "}};");
     }
 
-    /// asdf
+    /// Translates a Rust unit file into TypeScript.
+    ///
+    /// It currently supports `type`, `struct`, `enum` and `impl` items.
+    /// If an item in `ast` is not one of the mentioned above,
+    /// it is ignored.
     pub fn ts_unit(&mut self, ast: &File) {
         for item in &ast.items {
             match item {
-                Item::Enum(item_enum) => {
-                    self.ts_enum(&item_enum);
-                }
-                Item::Impl(impl_item) => {
-                    if impl_item.is_bindgen() && impl_item.has_exported_methods() {
-                        self.ts_doc(&impl_item.attrs, "");
-                        if let Some((_, trait_path, _)) = &impl_item.trait_ {
-                            let trait_name = join_path(trait_path);
-                            self.interfaces.push(trait_name.clone());
-                            ln!(self, "export interface {} {{", trait_name);
-                        } else {
-                            if let syn::Type::Path(type_path) = &*impl_item.self_ty {
-                                let impl_name = format!("Self{}", self.impl_count);
-                                self.impl_count += 1;
-                                self.name = join_path(&type_path.path);
-                                self.interfaces.push(impl_name.clone());
-                                ln!(self, "export interface {} {{", impl_name);
-                            } else {
-                                panic!("name not found")
-                            }
-                        }
-
-                        self.ts_methods(&impl_item);
-                        ln!(self, "}}\n");
-                    }
-                }
-                Item::Type(item_type) => self.ts_typedef(&item_type),
-                Item::Struct(item_struct) => {
-                    if item_struct.is_serde() {
-                        self.ts_struct(&item_struct)
-                    }
-                }
+                Item::Type(item_type) => self.ts_type(&item_type),
+                Item::Struct(item_struct) => self.ts_struct(&item_struct),
+                Item::Enum(item_enum) => self.ts_enum(&item_enum),
+                Item::Impl(item_impl) => self.ts_impl(&item_impl),
                 _ => {}
             }
         }
     }
 
-    fn ts_typedef(&mut self, item_type: &syn::ItemType) {
+    /// Translates a type alias to another type alias in TypeScript.
+    ///
+    /// ```
+    /// let mut ts = near_syn::ts::TS::new(Vec::new());
+    /// ts.ts_type(&syn::parse2(quote::quote! {
+    ///         /// Doc-comments are translated.
+    ///         type T = u64;
+    ///     }).unwrap());
+    /// assert_eq!(String::from_utf8_lossy(&ts.buf),
+    /// r#"/**
+    ///  *  Doc-comments are translated.
+    ///  */
+    /// export type T = number;
+    ///
+    /// "#);
+    /// ```
+    ///
+    /// If doc-comments are omitted,
+    /// TypeScript empty doc-comments will be emitted.
+    ///
+    /// ```
+    /// let mut ts = near_syn::ts::TS::new(Vec::new());
+    /// ts.ts_type(&syn::parse2(quote::quote! {
+    ///         type T = u64;
+    ///     }).unwrap());
+    /// assert_eq!(String::from_utf8_lossy(&ts.buf),
+    /// r#"/**
+    ///  */
+    /// export type T = number;
+    ///
+    /// "#);
+    /// ```
+    pub fn ts_type(&mut self, item_type: &syn::ItemType) {
         self.ts_doc(&item_type.attrs, "");
         ln!(
             self,
@@ -158,10 +234,91 @@ impl<T: std::io::Write> TS<T> {
         ln!(self, "");
     }
 
-    fn ts_struct(&mut self, item_struct: &ItemStruct) {
+    /// Generates the corresponding TypeScript bindings for the given `struct`.
+    /// Doc-comments embedded in the Rust source file are included in the bindings.
+    /// The `struct` must derive `Serialize` from `serde` in order to
+    /// generate its corresponding TypeScript bindings.
+    ///
+    /// ```
+    /// let mut ts = near_syn::ts::TS::new(Vec::new());
+    /// ts.ts_struct(&syn::parse2(quote::quote! {
+    ///         /// Doc-comments are also translated.
+    ///         #[derive(Serialize)]
+    ///         struct A {
+    ///             /// Doc-comments here are translated as well.
+    ///             field: u32,
+    ///         }
+    ///     }).unwrap());
+    /// assert_eq!(String::from_utf8_lossy(&ts.buf),
+    /// r#"/**
+    ///  *  Doc-comments are also translated.
+    ///  */
+    /// export interface A {
+    ///     /**
+    ///      *  Doc-comments here are translated as well.
+    ///      */
+    ///     field: number;
+    ///
+    /// }
+    ///
+    /// "#);
+    /// ```
+    ///
+    /// Single-compoenent tuple-structs are converted to TypeScript type synonym.
+    ///
+    /// ```
+    /// let mut ts = near_syn::ts::TS::new(Vec::new());
+    /// ts.ts_struct(&syn::parse2(quote::quote! {
+    ///         /// Tuple struct with one component.
+    ///         #[derive(Serialize)]
+    ///         struct T(String);
+    ///     }).unwrap());
+    /// assert_eq!(String::from_utf8_lossy(&ts.buf),
+    /// r#"/**
+    ///  *  Tuple struct with one component.
+    ///  */
+    /// export type T = string;
+    ///
+    /// "#);
+    /// ```
+    ///
+    /// On the other hand,
+    /// tuple-structs with more than one component,
+    /// are converted to TypeScript proper tuples.
+    ///
+    /// ```
+    /// let mut ts = near_syn::ts::TS::new(Vec::new());
+    /// ts.ts_struct(&syn::parse2(quote::quote! {
+    ///         /// Tuple struct with one component.
+    ///         #[derive(Serialize)]
+    ///         struct T(String, u32);
+    ///     }).unwrap());
+    /// assert_eq!(String::from_utf8_lossy(&ts.buf),
+    /// r#"/**
+    ///  *  Tuple struct with one component.
+    ///  */
+    /// export type T = [string, number];
+    ///
+    /// "#);
+    /// ```
+    ///
+    /// If derive `Serialize` is not found, given `struct` is omitted.
+    ///
+    /// ```
+    /// let mut ts = near_syn::ts::TS::new(Vec::new());
+    /// ts.ts_struct(&syn::parse2(quote::quote! {
+    ///         struct A { }
+    ///     }).unwrap());
+    /// assert_eq!(String::from_utf8_lossy(&ts.buf), "");
+    /// ```
+    pub fn ts_struct(&mut self, item_struct: &ItemStruct) {
+        if !item_struct.is_serde() {
+            return;
+        }
+
         self.ts_doc(&item_struct.attrs, "");
         match &item_struct.fields {
-            syn::Fields::Named(fields) => {
+            Fields::Named(fields) => {
                 ln!(self, "export interface {} {{", item_struct.ident);
                 for field in &fields.named {
                     let field_name = field.ident.as_ref().unwrap();
@@ -172,7 +329,7 @@ impl<T: std::io::Write> TS<T> {
                 ln!(self, "}}");
                 ln!(self, "");
             }
-            syn::Fields::Unnamed(fields) => {
+            Fields::Unnamed(fields) => {
                 let mut tys = Vec::new();
                 for field in &fields.unnamed {
                     let ty = ts_type(&field.ty);
@@ -189,38 +346,130 @@ impl<T: std::io::Write> TS<T> {
                     }
                 );
             }
-            syn::Fields::Unit => panic!("unit struct no supported"),
+            Fields::Unit => panic!("unit struct no supported"),
         }
     }
 
-    fn ts_enum(&mut self, item_enum: &ItemEnum) {
-        if item_enum.is_serde() {
-            self.ts_doc(&item_enum.attrs, "");
-            ln!(self, "export enum {} {{", item_enum.ident);
-            for variant in &item_enum.variants {
-                ln!(self, "    {},", variant.ident);
+    /// Translates an enum to a TypeScript `enum` or `type` according to the
+    /// Rust definition.
+    /// The Rust `enum` must derive `Serialize` from `serde` in order
+    /// to be translated.
+    ///
+    /// For instance, a plain Rust `enum` will be translated to an `enum`.
+    ///
+    /// ```
+    /// let mut ts = near_syn::ts::TS::new(Vec::new());
+    /// ts.ts_enum(&syn::parse2(quote::quote! {
+    ///         /// Doc-comments are translated.
+    ///         #[derive(Serialize)]
+    ///         enum E {
+    ///             /// Doc-comments here are translated as well.
+    ///             V1,
+    ///         }
+    ///     }).unwrap());
+    /// assert_eq!(String::from_utf8_lossy(&ts.buf),
+    /// r#"/**
+    ///  *  Doc-comments are translated.
+    ///  */
+    /// export enum E {
+    ///     /**
+    ///      *  Doc-comments here are translated as well.
+    ///      */
+    ///     V1,
+    ///
+    /// }
+    ///
+    /// "#);
+    /// ```
+    pub fn ts_enum(&mut self, item_enum: &ItemEnum) {
+        if !item_enum.is_serde() {
+            return;
+        }
+
+        self.ts_doc(&item_enum.attrs, "");
+        ln!(self, "export enum {} {{", item_enum.ident);
+        for variant in &item_enum.variants {
+            self.ts_doc(&variant.attrs, "    ");
+            ln!(self, "    {},\n", variant.ident);
+        }
+        ln!(self, "}}\n");
+    }
+
+    /// Translates an `impl` section to a TypeScript `interface.`
+    ///
+    /// A `struct` can have multiple `impl` sections with no `trait` to declare additional methods.
+    /// Such an `impl` section is exported as `Self<number>`,
+    /// where *number* is the `impl` section occurence.
+    ///
+    /// ```
+    /// let mut ts = near_syn::ts::TS::new(Vec::new());
+    /// ts.ts_impl(&syn::parse2(quote::quote! {
+    ///         /// Doc-comments are translated.
+    ///         #[near_bindgen]
+    ///         impl Contract {
+    ///             /// Doc-comments here are translated as well.
+    ///             pub fn get(&self) -> u32 { 42 }
+    ///         }
+    ///     }).unwrap());
+    /// ts.ts_main_type();
+    /// assert_eq!(String::from_utf8_lossy(&ts.buf),
+    /// r#"/**
+    ///  *  Doc-comments are translated.
+    ///  */
+    /// export interface Self0 {
+    ///     /**
+    ///      *  Doc-comments here are translated as well.
+    ///      */
+    ///     get(): Promise<number>;
+    ///
+    /// }
+    ///
+    /// export type Contract = Self0;
+    ///
+    /// "#);
+    /// ```
+    pub fn ts_impl(&mut self, item_impl: &ItemImpl) {
+        if !item_impl.is_bindgen() || !item_impl.has_exported_methods() {
+            return;
+        }
+
+        self.ts_doc(&item_impl.attrs, "");
+        if let Some((_, trait_path, _)) = &item_impl.trait_ {
+            let trait_name = join_path(trait_path);
+            self.interfaces.push(trait_name.clone());
+            ln!(self, "export interface {} {{", trait_name);
+        } else {
+            if let syn::Type::Path(type_path) = &*item_impl.self_ty {
+                let impl_name = format!("Self{}", self.impl_count);
+                self.impl_count += 1;
+                self.name = join_path(&type_path.path);
+                self.interfaces.push(impl_name.clone());
+                ln!(self, "export interface {} {{", impl_name);
+            } else {
+                panic!("name not found")
             }
-            ln!(self, "}}\n");
         }
-    }
 
-    fn ts_methods(&mut self, input: &ItemImpl) {
-        for impl_item in input.items.iter() {
-            if let ImplItem::Method(method) = impl_item {
-                if method.is_exported(input) {
-                    if !method.is_init() {
-                        if method.is_mut() {
-                            &mut self.change_methods
-                        } else {
-                            &mut self.view_methods
+        {
+            for item in item_impl.items.iter() {
+                if let ImplItem::Method(method) = item {
+                    if method.is_exported(item_impl) {
+                        if !method.is_init() {
+                            if method.is_mut() {
+                                &mut self.change_methods
+                            } else {
+                                &mut self.view_methods
+                            }
+                            .push(method.sig.ident.to_string());
                         }
-                        .push(method.sig.ident.to_string());
+                        self.ts_doc(&method.attrs, "    ");
+                        ln!(self, "    {}\n", ts_sig(&method));
                     }
-                    self.ts_doc(&method.attrs, "    ");
-                    ln!(self, "    {}\n", ts_sig(&method));
                 }
             }
         }
+
+        ln!(self, "}}\n");
     }
 
     fn ts_doc(&mut self, attrs: &Vec<Attribute>, indent: &str) {
