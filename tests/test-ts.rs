@@ -117,6 +117,14 @@ export interface B {
 }
 
 /**
+ *  doc-comment for enum
+ */
+export enum E {
+    V1,
+    V2,
+}
+
+/**
  */
 export interface Self0 {
     /**

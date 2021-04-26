@@ -1,8 +1,8 @@
 //! Augments `syn`'s AST with helper methods to deal with Near SDK definitions.
 
 use syn::{
-    Attribute, FnArg, ImplItem, ImplItemMethod, ItemImpl, ItemStruct, Meta, MetaList, NestedMeta,
-    Visibility,
+    Attribute, FnArg, ImplItem, ImplItemMethod, ItemEnum, ItemImpl, ItemStruct, Meta, MetaList,
+    NestedMeta, Visibility,
 };
 
 /// Defines standard attributes found in the Near SDK.
@@ -85,29 +85,47 @@ impl NearMethod for ImplItemMethod {
     }
 }
 
-/// Defines helper methods to deal with Near `struct`s.
-pub trait NearStruct {
-    /// Returns whether the given `self` method derives `serde::Serialize`.
+/// Defines methods to deal with serde's declarations in `struct`s or `enum`s.
+pub trait NearSerde {
+    /// Returns whether the given `self` item derives `serde::Serialize`.
     fn is_serialize(&self) -> bool;
 
-    /// Returns whether the given `self` method derives `serde::Deserialize`.
+    /// Returns whether the given `self` item derives `serde::Deserialize`.
     fn is_deserialize(&self) -> bool;
 
-    /// Returns whether the given `self` method derives either `serde::Serialize` or `serde::Deserialize`.
+    /// Returns whether the given `self` item derives either `serde::Serialize` or `serde::Deserialize`.
     fn is_serde(&self) -> bool;
 }
 
-impl NearStruct for ItemStruct {
+impl<I: NearAttributable> NearSerde for I {
     fn is_serialize(&self) -> bool {
-        derives(&self.attrs, "Serialize")
+        derives(&self.attrs(), "Serialize")
     }
 
     fn is_deserialize(&self) -> bool {
-        derives(&self.attrs, "Deserialize")
+        derives(&self.attrs(), "Deserialize")
     }
 
     fn is_serde(&self) -> bool {
         self.is_serialize() || self.is_deserialize()
+    }
+}
+
+///
+pub trait NearAttributable {
+    /// attrs
+    fn attrs(&self) -> &Vec<Attribute>;
+}
+
+impl NearAttributable for ItemStruct {
+    fn attrs(&self) -> &Vec<Attribute> {
+        &self.attrs
+    }
+}
+
+impl NearAttributable for ItemEnum {
+    fn attrs(&self) -> &Vec<Attribute> {
+        &self.attrs
     }
 }
 

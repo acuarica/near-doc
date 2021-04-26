@@ -1,9 +1,9 @@
 //! Functions to transpile Rust to TypeScript.
 
-use crate::{join_path, near_syn::NearMethod, write_docs, NearImpl, NearStruct};
+use crate::{join_path, near_syn::NearMethod, write_docs, NearImpl, NearSerde};
 use std::ops::Deref;
 use syn::{
-    Attribute, File, ImplItem, ImplItemMethod, Item, ItemImpl, ItemStruct, PathArguments,
+    Attribute, File, ImplItem, ImplItemMethod, Item, ItemEnum, ItemImpl, ItemStruct, PathArguments,
     ReturnType, Type,
 };
 
@@ -110,7 +110,9 @@ impl<T: std::io::Write> TS<T> {
     pub fn ts_unit(&mut self, ast: &File) {
         for item in &ast.items {
             match item {
-                Item::Enum(_) => {}
+                Item::Enum(item_enum) => {
+                    self.ts_enum(&item_enum);
+                }
                 Item::Impl(impl_item) => {
                     if impl_item.is_bindgen() && impl_item.has_exported_methods() {
                         self.ts_doc(&impl_item.attrs, "");
@@ -188,6 +190,17 @@ impl<T: std::io::Write> TS<T> {
                 );
             }
             syn::Fields::Unit => panic!("unit struct no supported"),
+        }
+    }
+
+    fn ts_enum(&mut self, item_enum: &ItemEnum) {
+        if item_enum.is_serde() {
+            self.ts_doc(&item_enum.attrs, "");
+            ln!(self, "export enum {} {{", item_enum.ident);
+            for variant in &item_enum.variants {
+                ln!(self, "    {},", variant.ident);
+            }
+            ln!(self, "}}\n");
         }
     }
 

@@ -36,6 +36,19 @@ struct B {
     b: U64,
 }
 
+/// non-serde enums are not exported
+enum E0 {
+    V1,
+    V2,
+}
+
+/// doc-comment for enum
+#[derive(Serialize)]
+enum E {
+    V1,
+    V2,
+}
+
 #[near_bindgen]
 struct C {
     f128: U128,
