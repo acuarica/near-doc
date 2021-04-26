@@ -91,6 +91,15 @@ impl C {
 
 }
 
+
+#[near_bindgen]
+impl C {
+    /// another impl
+    pub fn another_impl(&self, f128: U128) -> U128 {
+        f128
+    }
+}
+
 // All methods for traits are public, and thus exported
 #[near_bindgen]
 impl I for C {

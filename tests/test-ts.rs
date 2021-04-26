@@ -118,7 +118,7 @@ export interface B {
 
 /**
  */
-export interface Self {
+export interface Self0 {
     /**
      *  init func
      */
@@ -152,6 +152,16 @@ export interface Self {
 
 /**
  */
+export interface Self1 {
+    /**
+     *  another impl
+     */
+    another_impl(args: { f128: U128 }): Promise<U128>;
+
+}
+
+/**
+ */
 export interface I {
     /**
      *  Single-line comment for get
@@ -160,10 +170,10 @@ export interface I {
 
 }
 
-export type C = Self & I;
+export type C = Self0 & Self1 & I;
 "#,
             "C",
-            "get_f128,get_f128_other_way,get",
+            "get_f128,get_f128_other_way,another_impl,get",
             "set_f128,more_types,set_f128_with_sum",
         ));
 
@@ -188,7 +198,7 @@ export interface S {
 
 /**
  */
-export interface Self {
+export interface Self0 {
     /**
      */
     get(): Promise<number>;
@@ -203,7 +213,7 @@ export type T = [number, boolean];
  */
 export type U = AccountId;
 
-export type S = Self;
+export type S = Self0;
 "#,
         "S",
         "get",

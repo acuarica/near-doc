@@ -108,6 +108,16 @@ set_f128_with_sum(args: { a_value: U128, other_value: U128 }, gas?: any, amount?
 
 Pay to set f128.
 
+## Methods for C
+
+### :eyeglasses: `another_impl`
+
+```typescript
+another_impl(args: { f128: U128 }): Promise<U128>;
+```
+
+another impl
+
 ## Methods for `I` interface
 
 ### :eyeglasses: `get`
