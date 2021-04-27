@@ -111,9 +111,9 @@ impl<I: NearAttributable> NearSerde for I {
     }
 }
 
-///
+/// Any Rust item, *e.g., `struct` or `enum` to which attributes can attached to. 
 pub trait NearAttributable {
-    /// attrs
+    /// The attributes of this item.
     fn attrs(&self) -> &Vec<Attribute>;
 }
 
