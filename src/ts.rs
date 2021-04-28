@@ -3,7 +3,7 @@
 use crate::{join_path, near_syn::NearMethod, write_docs, NearImpl, NearSerde};
 use std::ops::Deref;
 use syn::{
-    Attribute, Fields, File, ImplItem, ImplItemMethod, Item, ItemEnum, ItemImpl, ItemStruct,
+    Attribute, Fields, ImplItem, ImplItemMethod, Item, ItemEnum, ItemImpl, ItemStruct,
     PathArguments, ReturnType, Type,
 };
 
@@ -174,18 +174,57 @@ impl<T: std::io::Write> TS<T> {
         ln!(self, "}};");
     }
 
-    /// Translates a Rust unit file into TypeScript.
+    /// Translates a collection of Rust items to TypeScript.
+    /// It currently translates `type`, `struct`, `enum` and `impl` items to TypeScript.
+    /// It traverses recursively `mod` definitions with braced content.
+    /// The inner `mod`' items are flatten into a single TypeScript module.
+    /// If an item in `items` is not one of the mentioned above, it is ignored.
     ///
-    /// It currently supports `type`, `struct`, `enum` and `impl` items.
-    /// If an item in `ast` is not one of the mentioned above,
-    /// it is ignored.
-    pub fn ts_unit(&mut self, ast: &File) {
-        for item in &ast.items {
+    /// In order to translate a Rust unit file, use the `items` field.
+    /// For example
+    ///
+    /// ```no_run
+    /// let mut ts = near_syn::ts::TS::new(std::io::stdout());
+    /// let ast = near_syn::parse_rust("path/to/file.rs");
+    /// ts.ts_items(&ast.items);
+    /// ```
+    ///
+    /// Notice how `mod` definitions are flattened:
+    ///
+    /// ```
+    /// let mut ts = near_syn::ts::TS::new(Vec::new());
+    /// let ast: syn::File = syn::parse2(quote::quote! {
+    ///         /// Doc-comments are translated.
+    ///         type T = u64;
+    ///         mod inner_mod {
+    ///             type S = u64;
+    ///         }
+    ///     }).unwrap();
+    /// ts.ts_items(&ast.items);
+    /// assert_eq!(String::from_utf8_lossy(&ts.buf),
+    /// r#"/**
+    ///  *  Doc-comments are translated.
+    ///  */
+    /// export type T = number;
+    ///
+    /// /**
+    ///  */
+    /// export type S = number;
+    ///
+    /// "#);
+    /// ```
+    pub fn ts_items(&mut self, items: &Vec<Item>) {
+        for item in items {
             match item {
                 Item::Type(item_type) => self.ts_type(&item_type),
                 Item::Struct(item_struct) => self.ts_struct(&item_struct),
                 Item::Enum(item_enum) => self.ts_enum(&item_enum),
                 Item::Impl(item_impl) => self.ts_impl(&item_impl),
+                Item::Mod(item_mod) => {
+                    if let Some((_, mod_items)) = &item_mod.content {
+                        self.ts_items(mod_items);
+                    }
+                }
                 _ => {}
             }
         }

@@ -14,7 +14,7 @@ fn main() {
 
     for file_name in args.files {
         let ast = parse_rust(file_name);
-        ts.ts_unit(&ast);
+        ts.ts_items(&ast.items);
     }
     ts.ts_main_type();
     ts.ts_contract_methods();
