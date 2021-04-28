@@ -197,6 +197,7 @@ impl<T: std::io::Write> TS<T> {
     ///         /// Doc-comments are translated.
     ///         type T = u64;
     ///         mod inner_mod {
+    ///             /// Doc-comments are translated.
     ///             type S = u64;
     ///         }
     ///     }).unwrap();
@@ -208,6 +209,7 @@ impl<T: std::io::Write> TS<T> {
     /// export type T = number;
     ///
     /// /**
+    ///  *  Doc-comments are translated.
     ///  */
     /// export type S = number;
     ///

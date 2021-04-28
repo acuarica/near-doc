@@ -184,6 +184,10 @@ export interface I {
 
 }
 
+/**
+ */
+export type A_in_mod = number;
+
 export type C = Self0 & Self1 & I;
 "#,
             "C",

@@ -138,6 +138,10 @@ impl K for C {
     }
 }
 
+mod inner_mod {
+    type A_in_mod = u32;
+}
+
 "#,
         r#"
 #[derive(Serialize)]
