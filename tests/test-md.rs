@@ -20,7 +20,7 @@ References
 
 ---
 
-*This documentation was generated with* **near-md v{}** <{}>**
+*This documentation was generated with* **near-md v{}** <{}>
 "#,
         text,
         env!("CARGO_PKG_VERSION"),
