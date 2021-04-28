@@ -37,7 +37,7 @@ macro_rules! Args {
         impl Args {
             fn now(&mut self) -> String {
                 if self.now.is_none() {
-                    self.now = Some(if self.no_now {"".to_string()} else {format!(" on {}",Utc::now().to_string())});
+                    self.now = Some(if self.no_now {"".to_string()} else {format!(" on {}",chrono::Utc::now().to_string())});
                 }
                 self.now.clone().unwrap()
             }

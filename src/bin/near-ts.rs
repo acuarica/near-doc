@@ -1,6 +1,5 @@
 #![deny(warnings)]
 
-use chrono::Utc;
 use clap::Clap;
 use near_syn::{parse_rust, ts::TS, Args};
 use std::env;

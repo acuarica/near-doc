@@ -1,6 +1,5 @@
 #![deny(warnings)]
 
-use chrono::Utc;
 use clap::Clap;
 use near_syn::{join_path, parse_rust, ts::ts_sig, write_docs, Args, NearImpl, NearMethod};
 use std::{env, io};
