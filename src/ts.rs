@@ -475,7 +475,7 @@ impl<T: std::io::Write> TS<T> {
         }
 
         self.ts_doc(&item_impl.attrs, "");
-        if let Some((_, trait_path, _)) = &item_impl.trait_ {
+        if let Some((_excl, trait_path, _for)) = &item_impl.trait_ {
             let trait_name = join_path(trait_path);
             self.interfaces.push(trait_name.clone());
             ln!(self, "export interface {} {{", trait_name);
