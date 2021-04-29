@@ -15,6 +15,6 @@ fn main() {
         let ast = parse_rust(file_name);
         ts.ts_items(&ast.items);
     }
-    ts.ts_main_type();
+    ts.ts_extend_traits();
     ts.ts_contract_methods();
 }

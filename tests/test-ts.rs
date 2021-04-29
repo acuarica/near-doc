@@ -132,7 +132,7 @@ export enum E {
 
 /**
  */
-export interface Self0 {
+export interface C {
     /**
      *  init func
      */
@@ -166,7 +166,7 @@ export interface Self0 {
 
 /**
  */
-export interface Self1 {
+export interface C {
     /**
      *  another impl
      */
@@ -188,7 +188,7 @@ export interface I {
  */
 export type A_in_mod = number;
 
-export type C = Self0 & Self1 & I;
+export interface C extends I {}
 "#,
             "C",
             "get_f128,get_f128_other_way,another_impl,get",
@@ -216,7 +216,7 @@ export type S = {
 
 /**
  */
-export interface Self0 {
+export interface S {
     /**
      */
     get(): Promise<number>;
@@ -230,8 +230,6 @@ export type T = [number, boolean];
 /**
  */
 export type U = AccountId;
-
-export type S = Self0;
 "#,
         "S",
         "get",

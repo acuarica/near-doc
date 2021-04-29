@@ -11,7 +11,6 @@ use syn::{
 pub struct TS<T> {
     /// Represents the name of the contract to export.
     pub name: String,
-    impl_count: u32,
     /// interfaces
     pub interfaces: Vec<String>,
     /// view
@@ -38,7 +37,6 @@ impl<T: std::io::Write> TS<T> {
     pub fn new(buf: T) -> Self {
         Self {
             name: String::new(),
-            impl_count: 0,
             interfaces: Vec::new(),
             view_methods: Vec::new(),
             change_methods: Vec::new(),
@@ -87,23 +85,27 @@ impl<T: std::io::Write> TS<T> {
         ln!(self, "");
     }
 
-    /// Exports the main type implemented by the contract.
-    /// The `name` and `interfaces` must be set in order to export the main type.
+    /// Emits additional extensions for the main type implemented by the contract.
+    /// This is used when the contract implements one or more `trait`s.
+    /// The `name` and `interfaces` fields must be set in order to emit these additional extensions.
+    ///
+    /// ## Examples
     ///
     /// ```
     /// let mut ts = near_syn::ts::TS::new(Vec::new());
     /// ts.name = "Contract".to_string();
-    /// ts.interfaces.push("Self0".to_string());
-    /// ts.ts_main_type();
-    /// assert_eq!(String::from_utf8_lossy(&ts.buf), "export type Contract = Self0;\n\n");
+    /// ts.interfaces.push("NftCore".to_string());
+    /// ts.interfaces.push("NftEnum".to_string());
+    /// ts.ts_extend_traits();
+    /// assert_eq!(String::from_utf8_lossy(&ts.buf), "export interface Contract extends NftCore, NftEnum {}\n\n");
     /// ```
-    pub fn ts_main_type(&mut self) {
+    pub fn ts_extend_traits(&mut self) {
         if !self.name.is_empty() && !self.interfaces.is_empty() {
             ln!(
                 self,
-                "export type {} = {};\n",
+                "export interface {} extends {} {{}}\n",
                 self.name,
-                self.interfaces.join(" & ")
+                self.interfaces.join(", ")
             );
         }
     }
@@ -212,6 +214,60 @@ impl<T: std::io::Write> TS<T> {
     ///  *  Doc-comments are translated.
     ///  */
     /// export type S = number;
+    ///
+    /// "#);
+    /// ```
+    ///
+    /// ```
+    /// let mut ts = near_syn::ts::TS::new(Vec::new());
+    /// let ast: syn::File = syn::parse2(quote::quote! {
+    ///         #[near_bindgen]
+    ///         impl Contract {
+    ///             pub fn get(&self) -> u32 { 42 }
+    ///         }
+    ///
+    ///         #[near_bindgen]
+    ///         impl NftCore for Contract {
+    ///             fn f(&self) -> u32 { 42 }
+    ///         }
+    ///
+    ///         #[near_bindgen]
+    ///         impl NftEnum for Contract {
+    ///             fn g(&self) -> u32 { 42 }
+    ///         }
+    ///
+    ///     }).unwrap();
+    /// ts.ts_items(&ast.items);
+    /// ts.ts_extend_traits();
+    /// assert_eq!(String::from_utf8_lossy(&ts.buf),
+    /// r#"/**
+    ///  */
+    /// export interface Contract {
+    ///     /**
+    ///      */
+    ///     get(): Promise<number>;
+    ///
+    /// }
+    ///
+    /// /**
+    ///  */
+    /// export interface NftCore {
+    ///     /**
+    ///      */
+    ///     f(): Promise<number>;
+    ///
+    /// }
+    ///
+    /// /**
+    ///  */
+    /// export interface NftEnum {
+    ///     /**
+    ///      */
+    ///     g(): Promise<number>;
+    ///
+    /// }
+    ///
+    /// export interface Contract extends NftCore, NftEnum {}
     ///
     /// "#);
     /// ```
@@ -439,8 +495,8 @@ impl<T: std::io::Write> TS<T> {
     /// Translates an `impl` section to a TypeScript `interface.`
     ///
     /// A `struct` can have multiple `impl` sections with no `trait` to declare additional methods.
-    /// Such an `impl` section is exported as `Self<number>`,
-    /// where *number* is the `impl` section occurence.
+    /// These `impl`s are emitted with the name of the contract,
+    /// as TypeScript merges these definitions.
     ///
     /// ```
     /// let mut ts = near_syn::ts::TS::new(Vec::new());
@@ -452,20 +508,17 @@ impl<T: std::io::Write> TS<T> {
     ///             pub fn get(&self) -> u32 { 42 }
     ///         }
     ///     }).unwrap());
-    /// ts.ts_main_type();
     /// assert_eq!(String::from_utf8_lossy(&ts.buf),
     /// r#"/**
     ///  *  Doc-comments are translated.
     ///  */
-    /// export interface Self0 {
+    /// export interface Contract {
     ///     /**
     ///      *  Doc-comments here are translated as well.
     ///      */
     ///     get(): Promise<number>;
     ///
     /// }
-    ///
-    /// export type Contract = Self0;
     ///
     /// "#);
     /// ```
@@ -481,11 +534,8 @@ impl<T: std::io::Write> TS<T> {
             ln!(self, "export interface {} {{", trait_name);
         } else {
             if let syn::Type::Path(type_path) = &*item_impl.self_ty {
-                let impl_name = format!("Self{}", self.impl_count);
-                self.impl_count += 1;
                 self.name = join_path(&type_path.path);
-                self.interfaces.push(impl_name.clone());
-                ln!(self, "export interface {} {{", impl_name);
+                ln!(self, "export interface {} {{", self.name);
             } else {
                 panic!("name not found")
             }
