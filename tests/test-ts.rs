@@ -84,7 +84,7 @@ export type BType = number;
  *  Doc-comment line 2 for A
  *  Doc-comment line 3 for A
  */
-export interface A {
+export type A = {
     /**
      */
     a1_field: U64;
@@ -109,7 +109,7 @@ export interface A {
 
 /**
  */
-export interface B {
+export type B = {
     /**
      */
     b: U64;
@@ -207,7 +207,7 @@ fn transpile_multiple_rust_files_to_ts() {
         r#"
 /**
  */
-export interface S {
+export type S = {
     /**
      */
     f: number;

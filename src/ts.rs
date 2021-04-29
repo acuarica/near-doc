@@ -294,7 +294,7 @@ impl<T: std::io::Write> TS<T> {
     /// r#"/**
     ///  *  Doc-comments are also translated.
     ///  */
-    /// export interface A {
+    /// export type A = {
     ///     /**
     ///      *  Doc-comments here are translated as well.
     ///      */
@@ -360,7 +360,7 @@ impl<T: std::io::Write> TS<T> {
         self.ts_doc(&item_struct.attrs, "");
         match &item_struct.fields {
             Fields::Named(fields) => {
-                ln!(self, "export interface {} {{", item_struct.ident);
+                ln!(self, "export type {} = {{", item_struct.ident);
                 for field in &fields.named {
                     let field_name = field.ident.as_ref().unwrap();
                     let ty = ts_type(&field.ty);
