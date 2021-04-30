@@ -182,15 +182,6 @@ impl<T: std::io::Write> TS<T> {
     /// The inner `mod`' items are flatten into a single TypeScript module.
     /// If an item in `items` is not one of the mentioned above, it is ignored.
     ///
-    /// In order to translate a Rust unit file, use the `items` field.
-    /// For example
-    ///
-    /// ```no_run
-    /// let mut ts = near_syn::ts::TS::new(std::io::stdout());
-    /// let ast = near_syn::parse_rust("path/to/file.rs");
-    /// ts.ts_items(&ast.items);
-    /// ```
-    ///
     /// Notice how `mod` definitions are flattened:
     ///
     /// ```
