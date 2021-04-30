@@ -166,7 +166,17 @@ fn derives(attrs: &Vec<Attribute>, macro_name: &str) -> bool {
     false
 }
 
-/// Joins segments of path by `::`.
+/// Joins segments of a path by `::`.
+///
+/// ## Example
+///
+/// ```
+/// use near_syn::join_path;
+/// use quote::quote;
+///
+/// let path = syn::parse2(quote! { A::B::C }).unwrap();
+/// assert_eq!(join_path(&path), "A::B::C");
+/// ```
 pub fn join_path(path: &syn::Path) -> String {
     path.segments
         .iter()
