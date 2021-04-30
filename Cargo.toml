@@ -1,7 +1,7 @@
 [package]
 name = "near-syn"
 version = "0.2.16"
-authors = ["Luis Mastrangelo <luismastrangelo@gmail.com>"]
+authors = ["Luis Mastrangelo <luis_mastrangelo@epam.com>"]
 edition = "2018"
 license = "MIT"
 categories = ["command-line-utilities", "template-engine", "wasm"]
