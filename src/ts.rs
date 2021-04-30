@@ -1,6 +1,6 @@
 //! Functions to transpile Rust to TypeScript.
 
-use crate::{join_path, near_syn::NearMethod, write_docs, NearImpl, NearSerde};
+use crate::{join_path, write_docs, NearImpl, NearMethod, NearSerde};
 use std::ops::Deref;
 use syn::{
     Attribute, Fields, ImplItem, ImplItemMethod, Item, ItemEnum, ItemImpl, ItemStruct,
