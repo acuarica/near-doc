@@ -1,17 +1,19 @@
 # near-syn
 
-[![Build Status](https://github.com/acuarica/near-syn/actions/workflows/near-syn.yml/badge.svg)](https://github.com/acuarica/near-syn/actions/)
+[![Build Status](https://github.com/epam/near-syn/actions/workflows/near-syn.yml/badge.svg)](https://github.com/epam/near-syn/actions/)
 [![Crates.io](https://img.shields.io/crates/v/near-syn)](https://crates.io/crates/near-syn/)
 [![docs.rs](https://img.shields.io/docsrs/near-syn)](https://docs.rs/near-syn/)
 ![License](https://img.shields.io/crates/l/near-syn.svg)
 
-`near-syn` is a library and command line utilities to ease contract development for the NEAR platform.
+`near-syn` is a library and command line utility to ease contract development for the NEAR platform.
 It leverages Rust `syn` to generate TypeScript bindings and Markdown docs.
 
-The `near-syn` package contains two command line utilities:
+The `near-syn` command line utility contains two sub-commands:
 
-- `near-ts` generates TypeScript bindings from Rust source files.
-- `near-md` generates Markdown documentation from Rust source files.
+- `ts` generates TypeScript bindings from Rust source files.
+- `md` generates Markdown documentation from Rust source files.
+
+For more details see `near-syn --help`.
 
 ## Installation
 
@@ -29,16 +31,16 @@ cargo install --git https://github.com/epam/near-syn --branch main
 
 ## Usage
 
-The `near-ts` utility takes a group of Rust source files,
+The `near-syn ts` utility takes a group of Rust source files,
 and outputs the generated TypeScript bindings.
 
 ```sh
-near-ts path/to/src/lib.rs > src/contract.ts
+near-syn ts path/to/src/lib.rs > src/contract.ts
 ```
 
-Similarly, the `near-md` utility takes a group of Rust source files,
+Similarly, the `near-syn md` utility takes a group of Rust source files,
 and outputs the generated Markdown documentation.
 
 ```sh
-near-md path/to/src/lib.rs > path/to/README.md
+near-syn md path/to/src/lib.rs > path/to/README.md
 ```
