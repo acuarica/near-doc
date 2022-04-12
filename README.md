@@ -5,7 +5,7 @@
 [![docs.rs](https://img.shields.io/docsrs/near-syn)](https://docs.rs/near-syn/)
 ![License](https://img.shields.io/crates/l/near-syn.svg)
 
-`near-syn` is a library and command line utility to ease contract development for the NEAR platform.
+`near-syn` is a library and command line utility to ease contract development for the [NEAR Protocol](https://near.org/).
 It leverages Rust `syn` to generate TypeScript bindings and Markdown docs.
 
 The `near-syn` command line utility contains two sub-commands:
