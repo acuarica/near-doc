@@ -1,12 +1,12 @@
 [package]
 name = "near-syn"
-version = "0.3.0"
-authors = ["Luis Mastrangelo <luis_mastrangelo@epam.com>"]
+version = "0.3.1"
+authors = ["Luis Mastrangelo <luismastrangelo@gmail.com>"]
 edition = "2018"
 license = "MIT"
 categories = ["command-line-utilities", "template-engine", "wasm"]
-repository = "https://github.com/epam/near-syn"
-homepage = "https://github.com/epam/near-syn"
+repository = "https://github.com/acuarica/near-syn"
+homepage = "https://github.com/acuarica/near-syn"
 description = """
 Library and command line utilities to make contract development for the NEAR platform easier.
 This package contains two command line utilities: near-ts to generate TypeScript bindings and near-doc to generates Markdown docs.
