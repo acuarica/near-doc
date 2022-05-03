@@ -56,7 +56,9 @@ impl<T: std::io::Write> TS<T> {
     /// export type U64 = string;
     /// export type I64 = string;
     /// export type U128 = string;
+    /// export type Base64VecU8 = string;
     /// export type I128 = string;
+    /// export type Balance = U128;
     /// export type AccountId = string;
     /// export type ValidAccountId = string;
     ///
@@ -79,7 +81,9 @@ impl<T: std::io::Write> TS<T> {
         ln!(self, "export type U64 = string;");
         ln!(self, "export type I64 = string;");
         ln!(self, "export type U128 = string;");
+        ln!(self, "export type Base64VecU8 = string;");
         ln!(self, "export type I128 = string;");
+        ln!(self, "export type Balance = U128;");
         ln!(self, "export type AccountId = string;");
         ln!(self, "export type ValidAccountId = string;");
         ln!(self, "");
@@ -567,7 +571,7 @@ impl<T: std::io::Write> TS<T> {
 /// ```
 /// use syn::parse_str;
 /// use near_syn::ts::ts_type;
-///
+/// 
 /// assert_eq!(ts_type(&parse_str("bool").unwrap()), "boolean");
 /// assert_eq!(ts_type(&parse_str("i8").unwrap()), "number");
 /// assert_eq!(ts_type(&parse_str("u8").unwrap()), "number");
@@ -576,6 +580,17 @@ impl<T: std::io::Write> TS<T> {
 /// assert_eq!(ts_type(&parse_str("i32").unwrap()), "number");
 /// assert_eq!(ts_type(&parse_str("u32").unwrap()), "number");
 /// assert_eq!(ts_type(&parse_str("String").unwrap()), "string");
+/// ```
+///
+/// Rust shared references are supported as well.
+/// 
+/// ```
+/// # use syn::parse_str;
+/// # use near_syn::ts::ts_type;
+/// assert_eq!(ts_type(&parse_str("&String").unwrap()), "string");
+/// assert_eq!(ts_type(&parse_str("&bool").unwrap()), "boolean");
+/// assert_eq!(ts_type(&parse_str("&u32").unwrap()), "number");
+/// assert_eq!(ts_type(&parse_str("&TokenId").unwrap()), "TokenId");
 /// ```
 ///
 /// Rust standard and collections types, *e.g.*, `Option`, `Vec` and `HashMap`,
@@ -694,7 +709,8 @@ pub fn ts_type(ty: &Type) -> String {
                     (format!("[{}]", tys.join(", ")), Assoc::Single)
                 }
             }
-            _ => panic!("type not supported"),
+            Type::Reference(reference) => ts_type_assoc(&reference.elem),
+            _ => panic!("type not supported: {:?}", ty),
         }
     }
     ts_type_assoc(ty).0

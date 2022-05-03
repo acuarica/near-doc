@@ -198,7 +198,9 @@ mod ts {
 export type U64 = string;
 export type I64 = string;
 export type U128 = string;
+export type Base64VecU8 = string;
 export type I128 = string;
+export type Balance = U128;
 export type AccountId = string;
 export type ValidAccountId = string;
 {}
