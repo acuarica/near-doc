@@ -44,3 +44,9 @@ and outputs the generated Markdown documentation.
 ```sh
 near-syn md path/to/src/lib.rs > path/to/README.md
 ```
+
+## Publishing
+
+```sh
+cargo install cargo-release
+```
