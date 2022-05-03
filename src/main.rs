@@ -1,7 +1,7 @@
 #![deny(warnings)]
 
 use chrono::Utc;
-use clap::{AppSettings, Clap};
+use clap::Parser;
 use near_syn::{
     join_path,
     ts::{ts_sig, TS},
@@ -16,26 +16,25 @@ use std::{
 use syn::{ImplItem, Item::Impl, ItemImpl, Type};
 
 /// Analyzes Rust source files to generate either TypeScript bindings or Markdown documentation
-#[derive(Clap)]
+#[derive(Parser)]
 #[clap(version = env!("CARGO_PKG_VERSION"), author = env!("CARGO_PKG_AUTHORS"))]
-#[clap(setting = AppSettings::ColoredHelp)]
 struct Args {
     #[clap(subcommand)]
     cmd: Cmd,
 }
 
-#[derive(Clap)]
+#[derive(Parser)]
 enum Cmd {
     /// Emits TypeScript bindings
-    #[clap(version = env!("CARGO_PKG_VERSION"), author = env!("CARGO_PKG_AUTHORS"), setting = AppSettings::ColoredHelp)]
+    #[clap(version = env!("CARGO_PKG_VERSION"), author = env!("CARGO_PKG_AUTHORS"))]
     TS(EmitArgs),
 
     /// Emits Markdown documentation
-    #[clap(version = env!("CARGO_PKG_VERSION"), author = env!("CARGO_PKG_AUTHORS"), setting = AppSettings::ColoredHelp)]
+    #[clap(version = env!("CARGO_PKG_VERSION"), author = env!("CARGO_PKG_AUTHORS"))]
     MD(EmitArgs),
 }
 
-#[derive(Clap)]
+#[derive(Parser)]
 struct EmitArgs {
     /// Does not emit date/time information,
     /// otherwise emits current time

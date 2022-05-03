@@ -13,11 +13,11 @@ This package contains two command line utilities: near-ts to generate TypeScript
 """
 
 [dependencies]
-syn = {version = "1.0.14", features = ["full", "fold", "visit", "extra-traits", "printing"] }
+syn = {version = "1.0.92", features = ["full", "fold", "visit", "extra-traits", "printing"] }
 quote = "1.0"
-proc-macro2 = "1.0"
+proc-macro2 = "1.0.37"
 chrono = "0.4"
-clap = "3.0.0-beta.2"
+clap = { version = "3.1.15", features = ["derive"] }
 
 [dev-dependencies]
 assert_cmd = "1.0.3"
