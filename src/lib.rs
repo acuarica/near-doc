@@ -5,14 +5,35 @@
 
 use syn::{
     Attribute, FnArg, ImplItem, ImplItemMethod, ItemEnum, ItemImpl, ItemStruct, Lit, Meta,
-    MetaList, MetaNameValue, NestedMeta, Visibility,
+    MetaList, MetaNameValue, NestedMeta, Path, PathArguments, Visibility,
 };
 
 pub mod ts;
 
-/// Defines standard attributes found in the Near SDK.
+/// Defines standard attributes found in the NEAR SDK.
+///
+/// This `trait` is intended to extend `syn::ItemImpl` to support
+/// NEAR definitions.
+///
+/// This trait _should_ not be applied to the contract `struct`,
+/// since the `struct` is not part of the public interface of the NEAR contract.
+///
+/// An overview of the `near_bindgen` attribute macro can be found in
+/// https://www.near-sdk.io/contract-structure/near-bindgen.
 pub trait NearImpl {
     /// Returns whether the given `self` implementation is marked as `near_bindgen`.
+    /// This should be an indication to further process this `impl` item.
+    ///
+    /// ### Examples
+    ///
+    /// The following `impl` item is marked as `near_bindgen`.
+    ///
+    /// ```compile_fail
+    /// #[near_bindgen]
+    /// impl Counter {
+    ///     // methods...
+    /// }
+    /// ```
     fn is_bindgen(&self) -> bool;
 
     /// Returns whether the given `self` implementation has any exported method.
@@ -138,7 +159,7 @@ impl NearAttributable for ItemEnum {
 /// Returns `false` otherwise.
 fn has_attr(attrs: &Vec<Attribute>, attr_name: &str) -> bool {
     for attr in attrs {
-        if attr.path.is_ident(attr_name) {
+        if is_ident(&attr.path, attr_name) {
             return true;
         }
     }
@@ -152,18 +173,28 @@ fn derives(attrs: &Vec<Attribute>, macro_name: &str) -> bool {
         if attr.path.is_ident("derive") {
             if let Ok(Meta::List(MetaList { nested, .. })) = attr.parse_meta() {
                 for elem in nested {
-                    if let NestedMeta::Meta(meta) = elem {
-                        if meta.path().is_ident(macro_name) {
+                    if let NestedMeta::Meta(Meta::Path(path)) = elem {
+                        if is_ident(&path, macro_name) {
                             return true;
                         }
                     }
                 }
-            } else {
-                panic!("not expected");
             }
         }
     }
     false
+}
+
+fn is_ident(path: &Path, ident: &str) -> bool {
+    fn last_segment_is_ident(path: &Path, ident: &str) -> bool {
+        let segments = &path.segments;
+        let len = segments.len();
+        len >= 2
+            && segments[len - 1].arguments == PathArguments::None
+            && segments[len - 1].ident.to_string() == ident
+    }
+
+    path.is_ident(ident) || last_segment_is_ident(path, ident)
 }
 
 /// Joins segments of a path by `::`.
@@ -202,6 +233,109 @@ pub fn write_docs<W: std::io::Write, F: Fn(String) -> String>(
             } else {
                 panic!("not expected");
             }
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+
+    mod has_attr {
+
+        use proc_macro2::TokenStream;
+        use quote::quote;
+        use syn::{Attribute, ItemImpl};
+
+        use crate::has_attr;
+
+        fn impl_attrs(tokens: TokenStream) -> Vec<Attribute> {
+            let item = syn::parse2::<ItemImpl>(tokens).unwrap();
+            item.attrs
+        }
+
+        #[test]
+        fn it_should_return_true_when_attr_is_defined() {
+            let attrs = impl_attrs(quote! {
+                #[near_bindgen]
+                impl Contract { }
+            });
+            assert!(has_attr(&attrs, "near_bindgen"));
+        }
+
+        #[test]
+        fn it_should_return_false_when_attr_is_not_defined() {
+            let attrs = impl_attrs(quote! {
+                #[not_near_bindgen]
+                #[::near_bindgen]
+                #[near_bindgen::not]
+                impl Contract { }
+            });
+            assert!(!has_attr(&attrs, "near_bindgen"));
+        }
+
+        #[test]
+        fn it_should_return_true_when_attr_is_defined_multiple_times() {
+            let attrs = impl_attrs(quote! {
+                #[near_bindgen]
+                #[near_bindgen]
+                #[maybe_near_bindgen]
+                impl Contract { }
+            });
+            assert!(has_attr(&attrs, "near_bindgen"));
+        }
+
+        #[test]
+        fn it_should_return_true_when_attr_is_defined_using_qualifiers() {
+            let attrs = impl_attrs(quote! {
+                #[near_sdk::near_bindgen]
+                #[::near_sdk::near_bindgen]
+                impl Contract { }
+            });
+            assert!(has_attr(&attrs, "near_bindgen"));
+        }
+    }
+
+    mod derives {
+
+        use proc_macro2::TokenStream;
+        use quote::quote;
+        use syn::{Attribute, ItemStruct};
+
+        use crate::derives;
+
+        fn struct_attrs(tokens: TokenStream) -> Vec<Attribute> {
+            let item = syn::parse2::<ItemStruct>(tokens).unwrap();
+            item.attrs
+        }
+
+        #[test]
+        fn it_should_return_true_when_struct_is_derived() {
+            let attrs = struct_attrs(quote! {
+                #[derive(Serialize)]
+                struct Data { }
+            });
+            assert!(derives(&attrs, "Serialize"));
+        }
+
+        #[test]
+        fn it_should_return_true_when_struct_is_derived_with_qualifiers() {
+            let attrs = struct_attrs(quote! {
+                #[derive(::near_sdk::serde::Serialize)]
+                struct Data { }
+            });
+            assert!(derives(&attrs, "Serialize"));
+        }
+
+        #[test]
+        fn it_should_return_false_when_struct_is_not_derived() {
+            let attrs = struct_attrs(quote! {
+                #[derive()]
+                #[derive(::Serialize)]
+                #[derive=Serialize]
+                #[derive(Serialize=1)]
+                struct Data { }
+            });
+            assert!(!derives(&attrs, "Serialize"));
         }
     }
 }
