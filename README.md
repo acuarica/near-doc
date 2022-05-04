@@ -63,7 +63,7 @@ cargo login
 To perform a dry-run
 
 ```sh
-cargo release --verbose <LEVEL>
+cargo release --verbose [LEVEL]
 ```
 
 And to actually publish, tag and release a new version, run
