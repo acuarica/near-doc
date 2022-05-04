@@ -41,3 +41,47 @@ export interface IContract {
 "#
     );
 }
+
+#[test]
+fn ts_should_merge_trait_and_impl_comments() {
+    let ast: File = parse2(quote! {
+
+        /// doc for IContract
+        trait IContract {
+            /// doc for IContract::get
+            fn get(&self, f128: U128) -> U128;
+        }
+
+        /// doc in Contract
+        #[near_bindgen]
+        impl IContract for Contract {
+            /// doc in Contract::get
+            pub fn get(&self, f128: U128) -> U128 {
+                f128
+            }
+        }
+
+    })
+    .unwrap();
+
+    let mut ts = TS::new(Vec::new());
+    ts.ts_items(&ast.items);
+    let out = String::from_utf8(ts.buf).unwrap();
+    assert_eq!(
+        out,
+        r#"/**
+ *  doc in Contract
+ *  doc for IContract
+ */
+export interface IContract {
+    /**
+     *  doc in Contract::get
+     *  doc for IContract::get
+     */
+    get(args: { f128: U128 }): Promise<U128>;
+
+}
+
+"#
+    );
+}
