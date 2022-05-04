@@ -1,7 +1,43 @@
-use near_syn::ts::ts_type;
+use near_syn::ts::TS;
+use quote::quote;
+use syn::{parse2, File};
 
 #[test]
-#[should_panic(expected = "Option used with no generic arg")]
-fn ts_type_on_option_with_no_args_should_panic() {
-    ts_type(&syn::parse_str("Option").unwrap());
+fn ts_should_forward_trait_comments() {
+    let ast: File = parse2(quote! {
+
+        /// doc for IContract
+        trait IContract {
+            /// doc for IContract::get
+            fn get(&self, f128: U128) -> U128;
+        }
+
+        #[near_bindgen]
+        impl IContract for Contract {
+            pub fn get(&self, f128: U128) -> U128 {
+                f128
+            }
+        }
+
+    })
+    .unwrap();
+
+    let mut ts = TS::new(Vec::new());
+    ts.ts_items(&ast.items);
+    let out = String::from_utf8(ts.buf).unwrap();
+    assert_eq!(
+        out,
+        r#"/**
+ *  doc for IContract
+ */
+export interface IContract {
+    /**
+     *  doc for IContract::get
+     */
+    get(args: { f128: U128 }): Promise<U128>;
+
+}
+
+"#
+    );
 }

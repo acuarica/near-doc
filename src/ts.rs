@@ -1,23 +1,33 @@
 //! Functions to transpile Rust to TypeScript.
 
 use crate::{join_path, write_docs, NearImpl, NearMethod, NearSerde};
-use std::ops::Deref;
+use std::{collections::HashMap, ops::Deref};
 use syn::{
-    Attribute, Fields, ImplItem, ImplItemMethod, Item, ItemEnum, ItemImpl, ItemStruct,
-    PathArguments, ReturnType, Type,
+    Attribute, Fields, ImplItem, ImplItemMethod, Item, ItemEnum, ItemImpl, ItemStruct, ItemTrait,
+    PathArguments, ReturnType, TraitItem, TraitItemMethod, Type,
 };
 
 /// Represents a pass to several Rust files to generate TypeScript bindings.
 pub struct TS<T> {
     /// Represents the name of the contract to export.
     pub name: String,
-    /// interfaces
+
+    /// TypeScript interfaces.
+    traits: HashMap<String, (ItemTrait, HashMap<String, TraitItemMethod>)>,
+
+    /// Keeps track of `impl` items of the contract to be emitted as
+    /// TypeScript interfaces.
     pub interfaces: Vec<String>,
-    /// view
+
+    /// Keeps track of the `view_methods` in the contract to be emitted
+    /// at the end of the parsing.
     pub view_methods: Vec<String>,
-    /// change
+
+    /// Keeps track of the `change_methods` in the contract to be emitted
+    /// at the end of the parsing.
     pub change_methods: Vec<String>,
-    /// Output buffer where to store the generated TypeScript bindings.
+
+    /// Output buffer where it writes the generated TypeScript bindings.
     pub buf: T,
 }
 
@@ -37,6 +47,7 @@ impl<T: std::io::Write> TS<T> {
     pub fn new(buf: T) -> Self {
         Self {
             name: String::new(),
+            traits: HashMap::new(),
             interfaces: Vec::new(),
             view_methods: Vec::new(),
             change_methods: Vec::new(),
@@ -44,7 +55,7 @@ impl<T: std::io::Write> TS<T> {
         }
     }
 
-    /// Exports common NEAR Rust SDK types based on 
+    /// Exports common NEAR Rust SDK types based on
     /// https://docs.rs/near-sdk/4.0.0-pre.4/near_sdk/.
     /// Moreover, it adds a header indicating the time and binary that
     /// generated these bindings.
@@ -302,6 +313,8 @@ impl<T: std::io::Write> TS<T> {
     /// "#);
     /// ```
     pub fn ts_items(&mut self, items: &Vec<Item>) {
+        self.forward_traits(items);
+
         for item in items {
             match item {
                 Item::Type(item_type) => self.ts_type(&item_type),
@@ -557,14 +570,23 @@ impl<T: std::io::Write> TS<T> {
             return;
         }
 
-        self.ts_doc(&item_impl.attrs, "");
+        let mut item_trait = None;
         if let Some((_excl, trait_path, _for)) = &item_impl.trait_ {
             let trait_name = join_path(trait_path);
             self.interfaces.push(trait_name.clone());
+
+            let mut attrs = item_impl.attrs.clone();
+            item_trait = self.traits.get(&trait_name).cloned();
+            if item_trait.is_some() {
+                attrs.append(&mut item_trait.clone().unwrap().0.attrs.clone());
+            }
+
+            self.ts_doc(&attrs, "");
             ln!(self, "export interface {} {{", trait_name);
         } else {
             if let syn::Type::Path(type_path) = &*item_impl.self_ty {
                 self.name = join_path(&type_path.path);
+                self.ts_doc(&item_impl.attrs, "");
                 ln!(self, "export interface {} {{", self.name);
             } else {
                 panic!("name not found")
@@ -583,7 +605,22 @@ impl<T: std::io::Write> TS<T> {
                             }
                             .push(method.sig.ident.to_string());
                         }
-                        self.ts_doc(&method.attrs, "    ");
+                        self.ts_doc(
+                            &if let Some(item_trait) = item_trait.clone() {
+                                if let Some(trait_method) =
+                                    item_trait.1.get(&method.sig.ident.to_string()).cloned()
+                                {
+                                    let mut attrs = method.attrs.clone();
+                                    attrs.extend(trait_method.attrs);
+                                    attrs
+                                } else {
+                                    method.attrs.clone()
+                                }
+                            } else {
+                                method.attrs.clone()
+                            },
+                            "    ",
+                        );
                         ln!(self, "    {}\n", ts_sig(&method));
                     }
                 }
@@ -598,6 +635,36 @@ impl<T: std::io::Write> TS<T> {
         write_docs(&mut self.buf, attrs, |l| format!("{} * {}", indent, l));
         ln!(self, "{} */", indent);
     }
+
+    fn forward_traits(&mut self, items: &Vec<Item>) {
+        for item in items {
+            match item {
+                Item::Trait(item_trait) => self.push_trait(&item_trait),
+                Item::Mod(item_mod) => {
+                    if let Some((_, mod_items)) = &item_mod.content {
+                        self.forward_traits(mod_items);
+                    }
+                }
+                _ => {}
+            }
+        }
+    }
+
+    fn push_trait(&mut self, item_trait: &ItemTrait) {
+        self.traits.insert(
+            item_trait.ident.to_string(),
+            (item_trait.clone(), {
+                let mut items = HashMap::new();
+                for item in &item_trait.items {
+                    if let TraitItem::Method(method) = item {
+                        items.insert(method.sig.ident.to_string(), method.clone());
+                    }
+                }
+
+                items
+            }),
+        );
+    }
 }
 
 /// Return the TypeScript equivalent type of the Rust type represented by `ty`.
@@ -606,7 +673,7 @@ impl<T: std::io::Write> TS<T> {
 /// ```
 /// use syn::parse_str;
 /// use near_syn::ts::ts_type;
-/// 
+///
 /// assert_eq!(ts_type(&parse_str("bool").unwrap()), "boolean");
 /// assert_eq!(ts_type(&parse_str("i8").unwrap()), "number");
 /// assert_eq!(ts_type(&parse_str("u8").unwrap()), "number");
@@ -618,7 +685,7 @@ impl<T: std::io::Write> TS<T> {
 /// ```
 ///
 /// Rust shared references are supported as well.
-/// 
+///
 /// ```
 /// # use syn::parse_str;
 /// # use near_syn::ts::ts_type;
