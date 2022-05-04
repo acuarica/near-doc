@@ -23,7 +23,7 @@ To install the `near-syn` command line utilities use
 cargo install near-syn
 ```
 
-Or alternatively you can install it directly from GitHub
+Or alternatively you can `install` it directly from GitHub (see more [`install` options](https://doc.rust-lang.org/cargo/commands/cargo-install.html#install-options))
 
 ```sh
 cargo install --git https://github.com/acuarica/near-syn --branch main
