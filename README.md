@@ -1,6 +1,6 @@
 # near-syn
 
-[![Build Status](https://github.com/epam/near-syn/actions/workflows/near-syn.yml/badge.svg)](https://github.com/epam/near-syn/actions/)
+[![Build Status](https://github.com/acuarica/near-syn/actions/workflows/near-syn.yml/badge.svg)](https://github.com/acuarica/near-syn/actions/)
 [![Crates.io](https://img.shields.io/crates/v/near-syn)](https://crates.io/crates/near-syn/)
 [![docs.rs](https://img.shields.io/docsrs/near-syn)](https://docs.rs/near-syn/)
 ![License](https://img.shields.io/crates/l/near-syn.svg)
@@ -26,7 +26,7 @@ cargo install near-syn
 Or alternatively you can install it directly from GitHub
 
 ```sh
-cargo install --git https://github.com/epam/near-syn --branch main
+cargo install --git https://github.com/acuarica/near-syn --branch main
 ```
 
 ## Usage
@@ -47,6 +47,25 @@ near-syn md path/to/src/lib.rs > path/to/README.md
 
 ## Publishing
 
+We use [`cargo-release`](https://github.com/crate-ci/cargo-release) to verify, publish and tag new versions.
+First, install
+
 ```sh
 cargo install cargo-release
+```
+
+```sh
+cargo login
+```
+
+```sh
+cargo release --verbose patch
+```
+
+```sh
+cargo release --verbose --execute [LEVEL]
+```
+
+```sh
+cargo release --verbose --execute patch
 ```
