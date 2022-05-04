@@ -54,17 +54,26 @@ First, install
 cargo install cargo-release
 ```
 
+Make sure you have logged in with `cargo`
+
 ```sh
 cargo login
 ```
 
+To perform a dry-run
+
 ```sh
-cargo release --verbose patch
+cargo release --verbose <LEVEL>
 ```
+
+And to actually publish, tag and release a new version, run
 
 ```sh
 cargo release --verbose --execute [LEVEL]
 ```
+
+where `[LEVEl]` is the [bump level](https://github.com/crate-ci/cargo-release/blob/master/docs/reference.md#bump-level) incremented to get a new version.
+For example
 
 ```sh
 cargo release --verbose --execute patch
