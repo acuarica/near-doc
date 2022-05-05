@@ -144,7 +144,7 @@ References
     }
 
     #[test]
-    fn transpile_single_rust_file_to_doc() {
+    fn transpile_single_rust_file_to_md() {
         let paths = rust_test_files();
 
         let mut cmd = near_md();
