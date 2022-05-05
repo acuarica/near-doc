@@ -3,6 +3,8 @@
 #![deny(warnings)]
 #![warn(missing_docs)]
 
+use std::io::{self, Write};
+
 use contract::NearItemTrait;
 use syn::{
     Attribute, FnArg, ImplItem, ImplItemMethod, ItemEnum, ItemImpl, ItemStruct, Lit, Meta,
@@ -315,23 +317,25 @@ pub fn get_docs(attrs: &Vec<Attribute>) -> Vec<String> {
 
 /// Writes Rust `doc` comments to `file`.
 /// Each line of `doc` is prefixed with `prefix`.
-pub fn write_docs<W: std::io::Write, F: Fn(String) -> String>(
+pub fn write_docs<W: Write, F: Fn(String) -> String>(
     file: &mut W,
     attrs: &Vec<Attribute>,
     mapf: F,
-) {
+) -> io::Result<()> {
     for attr in attrs {
         if attr.path.is_ident("doc") {
             if let Ok(Meta::NameValue(MetaNameValue {
                 lit: Lit::Str(lit), ..
             })) = attr.parse_meta()
             {
-                writeln!(file, "{}", mapf(lit.value())).unwrap();
+                writeln!(file, "{}", mapf(lit.value()))?;
             } else {
                 panic!("not expected");
             }
         }
     }
+
+    Ok(())
 }
 
 #[cfg(test)]

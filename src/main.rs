@@ -45,16 +45,18 @@ struct EmitArgs {
     files: Vec<String>,
 }
 
-fn main() {
+fn main() -> io::Result<()> {
     let args = Args::parse();
 
     match args.cmd {
-        Cmd::TS(args) => emit_ts(args),
-        Cmd::MD(args) => emit_md(args).unwrap(),
+        Cmd::TS(args) => emit_ts(args)?,
+        Cmd::MD(args) => emit_md(args)?,
     }
+
+    Ok(())
 }
 
-fn emit_ts(args: EmitArgs) {
+fn emit_ts(args: EmitArgs) -> io::Result<()> {
     let mut buf = std::io::stdout();
     ts_prelude(
         &mut buf,
@@ -64,7 +66,7 @@ fn emit_ts(args: EmitArgs) {
             format!(" on {}", Utc::now())
         },
         env!("CARGO_BIN_NAME"),
-    );
+    )?;
 
     let mut contract = Contract::new();
 
@@ -72,11 +74,13 @@ fn emit_ts(args: EmitArgs) {
         let ast = parse_rust(file_name);
 
         contract.forward_traits(&ast.items);
-        ts_items(&mut buf, &ast.items, &contract);
+        ts_items(&mut buf, &ast.items, &contract)?;
     }
 
-    ts_extend_traits(&mut buf, &contract);
-    ts_contract_methods(&mut buf, &contract);
+    ts_extend_traits(&mut buf, &contract)?;
+    ts_contract_methods(&mut buf, &contract)?;
+
+    Ok(())
 }
 
 fn emit_md(args: EmitArgs) -> io::Result<()> {
@@ -100,11 +104,11 @@ fn emit_md(args: EmitArgs) -> io::Result<()> {
         contract.forward_traits(&ast.items);
         asts.push(ast);
     }
-    md_methods_table(&mut buf, &asts, &contract);
+    md_methods_table(&mut buf, &asts, &contract)?;
 
     for file_name in &args.files {
         let ast = parse_rust(file_name);
-        md_items(&ast, &contract);
+        md_items(&mut buf, &ast, &contract)?;
     }
 
     md_footer(

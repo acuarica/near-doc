@@ -1,9 +1,11 @@
+use std::io;
+
 use near_syn::{contract::Contract, ts::ts_items};
 use quote::quote;
 use syn::{parse2, File};
 
 #[test]
-fn ts_should_forward_trait_comments() {
+fn ts_should_forward_trait_comments() -> io::Result<()> {
     let ast: File = parse2(quote! {
 
         /// doc for IContract
@@ -25,7 +27,7 @@ fn ts_should_forward_trait_comments() {
     let mut buf = Vec::new();
     let mut contract = Contract::new();
     contract.forward_traits(&ast.items);
-    ts_items(&mut buf, &ast.items, &mut contract);
+    ts_items(&mut buf, &ast.items, &mut contract)?;
     let out = String::from_utf8(buf).unwrap();
     assert_eq!(
         out,
@@ -42,10 +44,12 @@ export interface IContract {
 
 "#
     );
+
+    Ok(())
 }
 
 #[test]
-fn ts_should_merge_trait_and_impl_comments() {
+fn ts_should_merge_trait_and_impl_comments() -> io::Result<()> {
     let ast: File = parse2(quote! {
 
         /// doc for IContract
@@ -69,7 +73,7 @@ fn ts_should_merge_trait_and_impl_comments() {
     let mut buf = Vec::new();
     let mut contract = Contract::new();
     contract.forward_traits(&ast.items);
-    ts_items(&mut buf, &ast.items, &mut contract);
+    ts_items(&mut buf, &ast.items, &mut contract)?;
     let out = String::from_utf8(buf).unwrap();
     assert_eq!(
         out,
@@ -88,4 +92,6 @@ export interface IContract {
 
 "#
     );
+
+    Ok(())
 }
