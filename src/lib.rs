@@ -3,11 +3,14 @@
 #![deny(warnings)]
 #![warn(missing_docs)]
 
+use contract::NearItemTrait;
 use syn::{
     Attribute, FnArg, ImplItem, ImplItemMethod, ItemEnum, ItemImpl, ItemStruct, Lit, Meta,
-    MetaList, MetaNameValue, NestedMeta, Path, PathArguments, Visibility,
+    MetaList, MetaNameValue, NestedMeta, Path, PathArguments, Type, Visibility,
 };
 
+pub mod contract;
+pub mod md;
 pub mod ts;
 
 /// Defines standard attributes found in the NEAR SDK.
@@ -36,8 +39,27 @@ pub trait NearImpl {
     /// ```
     fn is_bindgen(&self) -> bool;
 
+    /// Returns the trait name this `impl` implements, if any.
+    fn get_trait_name(&self) -> Option<String>;
+
+    /// Returns the struct this `impl` implements.
+    /// Only `Type::Path` are supported.
+    fn get_impl_name(&self) -> Option<String>;
+
     /// Returns whether the given `self` implementation has any exported method.
-    fn has_exported_methods(&self) -> bool;
+    ///
+    /// For more info on public method in the NEAR SDK,
+    /// see https://www.near-sdk.io/contract-interface/public-methods.
+    fn exported_methods(&self) -> Vec<&ImplItemMethod>;
+
+    /// Returns the exported methods if `self` `is_bindgen`.
+    /// In this case, the inner `Vec` should contain elements.
+    /// Otherwise, it returns `None`.
+    fn bindgen_methods(&self) -> Option<Vec<&ImplItemMethod>>;
+
+    /// Join the attributes of this impl with its corresponding trait definition.
+    /// Useful to gather documentation attributes.
+    fn join_attrs(&self, item_trait: Option<&NearItemTrait>) -> Vec<Attribute>;
 }
 
 impl NearImpl for ItemImpl {
@@ -45,15 +67,53 @@ impl NearImpl for ItemImpl {
         has_attr(&self.attrs, "near_bindgen")
     }
 
-    fn has_exported_methods(&self) -> bool {
+    fn get_trait_name(&self) -> Option<String> {
+        if let Some((_excl, trait_path, _for)) = &self.trait_ {
+            let trait_name = join_path(trait_path);
+            Some(trait_name)
+        } else {
+            None
+        }
+    }
+
+    fn get_impl_name(&self) -> Option<String> {
+        if let Type::Path(type_path) = &*self.self_ty {
+            Some(join_path(&type_path.path))
+        } else {
+            None
+        }
+    }
+
+    fn exported_methods(&self) -> Vec<&ImplItemMethod> {
+        let mut methods = Vec::new();
         for impl_item in self.items.iter() {
             if let ImplItem::Method(method) = impl_item {
                 if method.is_exported(self) {
-                    return true;
+                    methods.push(method);
                 }
             }
         }
-        false
+
+        methods
+    }
+
+    fn bindgen_methods(&self) -> Option<Vec<&ImplItemMethod>> {
+        let methods = self.exported_methods();
+        if self.is_bindgen() && methods.len() > 0 {
+            return Some(methods);
+        }
+
+        None
+    }
+
+    fn join_attrs(&self, item_trait: Option<&NearItemTrait>) -> Vec<Attribute> {
+        if let Some(base_trait) = item_trait {
+            let mut attrs = self.attrs.clone();
+            attrs.extend(base_trait.attrs.clone());
+            return attrs;
+        } else {
+            self.attrs.clone()
+        }
     }
 }
 
@@ -76,6 +136,10 @@ pub trait NearMethod {
 
     /// Returns whether the given `self` method in `input` impl is being exported.
     fn is_exported(&self, input: &ItemImpl) -> bool;
+
+    /// Join the attributes of this impl with its corresponding trait definition.
+    /// Useful to gather documentation attributes.
+    fn join_attrs(&self, item_trait: Option<&NearItemTrait>) -> Vec<Attribute>;
 }
 
 impl NearMethod for ImplItemMethod {
@@ -108,6 +172,20 @@ impl NearMethod for ImplItemMethod {
 
     fn is_exported(&self, input: &ItemImpl) -> bool {
         (self.is_public() || input.trait_.is_some()) && !self.is_private()
+    }
+
+    fn join_attrs(&self, item_trait: Option<&NearItemTrait>) -> Vec<Attribute> {
+        let name = self.sig.ident.to_string();
+        if let Some(base_trait) = item_trait {
+            if let Some(base_method) = base_trait.get(&name) {
+                let mut attrs = self.attrs.clone();
+                attrs.extend(base_method.attrs.clone());
+                return attrs;
+            }
+            self.attrs.clone()
+        } else {
+            self.attrs.clone()
+        }
     }
 }
 
@@ -202,18 +280,37 @@ fn is_ident(path: &Path, ident: &str) -> bool {
 /// ## Example
 ///
 /// ```
-/// use near_syn::join_path;
-/// use quote::quote;
+/// //use near_syn::join_path;
+/// //use quote::quote;
 ///
-/// let path = syn::parse2(quote! { A::B::C }).unwrap();
-/// assert_eq!(join_path(&path), "A::B::C");
+/// //let path = syn::parse2(quote! { A::B::C }).unwrap();
+/// //assert_eq!(join_path(&path), "A::B::C");
 /// ```
-pub fn join_path(path: &syn::Path) -> String {
+fn join_path(path: &syn::Path) -> String {
     path.segments
         .iter()
         .map(|seg| seg.ident.to_string())
         .collect::<Vec<String>>()
         .join("::")
+}
+
+///
+pub fn get_docs(attrs: &Vec<Attribute>) -> Vec<String> {
+    let mut docs = Vec::new();
+    for attr in attrs {
+        if attr.path.is_ident("doc") {
+            if let Ok(Meta::NameValue(MetaNameValue {
+                lit: Lit::Str(lit), ..
+            })) = attr.parse_meta()
+            {
+                docs.push(lit.value());
+            } else {
+                panic!("not expected");
+            }
+        }
+    }
+
+    docs
 }
 
 /// Writes Rust `doc` comments to `file`.
