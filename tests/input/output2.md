@@ -1,4 +1,4 @@
-| :rocket: `init_here` (*constructor*) |  init func | `Self` |
+| :rocket: `init_here` (_constructor_) |  init func | `Self` |
 | :eyeglasses: `get_f128` |  Line 1 for get_f128 first  Line 2 for get_f128 second | `U128` |
 | :writing_hand: `set_f128` |  Set f128. | `void` |
 | :eyeglasses: `get_f128_other_way` |  | `U128` |
@@ -10,7 +10,7 @@
 
 ## Methods for C
 
-### :rocket: `init_here` (*constructor*)
+### :rocket: `init_here` (_constructor_)
 
 ```typescript
 init_here: { f128: U128 };

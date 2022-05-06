@@ -27,15 +27,15 @@ pub fn md_footer<W: Write>(buf: &mut W, bin: &str, now: String) -> io::Result<()
     )?;
     writeln!(
         buf,
-        "- :eyeglasses: View only method, *i.e.*, does not modify the contract state."
+        "- :eyeglasses: View only method, _i.e._, does not modify the contract state."
     )?;
     writeln!(
         buf,
-        "- :writing_hand: Call method, i.e., does modify the contract state."
+        "- :writing_hand: Call method, _i.e._, does modify the contract state."
     )?;
     writeln!(
         buf,
-        "- &#x24C3; Payable method, i.e., call needs to have an attached NEAR deposit."
+        "- &#x24C3; Payable method, _i.e._, call needs to have an attached NEAR deposit."
     )?;
 
     writeln!(
@@ -176,7 +176,7 @@ impl MarkdownMethod for ImplItemMethod {
 
     fn mods(&self) -> (&str, &str) {
         if self.is_init() {
-            (":rocket:", " (*constructor*)")
+            (":rocket:", " (_constructor_)")
         } else {
             (self.mut_mod(), "")
         }

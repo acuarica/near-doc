@@ -9,9 +9,9 @@
 References
 
 - :rocket: Initialization method. Needs to be called right after deployment.
-- :eyeglasses: View only method, *i.e.*, does not modify the contract state.
-- :writing_hand: Call method, i.e., does modify the contract state.
-- &#x24C3; Payable method, i.e., call needs to have an attached NEAR deposit.
+- :eyeglasses: View only method, _i.e._, does not modify the contract state.
+- :writing_hand: Call method, _i.e._, does modify the contract state.
+- &#x24C3; Payable method, _i.e._, call needs to have an attached NEAR deposit.
 
 ---
 
