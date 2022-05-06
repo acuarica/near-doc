@@ -317,6 +317,7 @@ pub fn get_docs(attrs: &Vec<Attribute>) -> Vec<String> {
 
 /// Writes Rust `doc` comments to `file`.
 /// Each line of `doc` is prefixed with `prefix`.
+/// See https://doc.rust-lang.org/rustdoc/the-doc-attribute.html.
 pub fn write_docs<W: Write, F: Fn(String) -> String>(
     file: &mut W,
     attrs: &Vec<Attribute>,

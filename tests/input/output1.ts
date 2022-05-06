@@ -4,14 +4,14 @@
 export type AType = number;
 
 /**
- *  Doc-comments for a type def
+ * Doc-comments for a type def
  */
 export type BType = number;
 
 /**
- *  Doc-comment line 1 for A
- *  Doc-comment line 2 for A
- *  Doc-comment line 3 for A
+ * Doc-comment line 1 for A
+ * Doc-comment line 2 for A
+ * Doc-comment line 3 for A
  */
 export type A = {
     /**
@@ -23,14 +23,14 @@ export type A = {
     a2_field: U64;
 
     /**
-     *  Line for a3
-     *  Line for a2, then blank line
+     * Line for a3
+     * Line for a2, then blank line
      * 
-     *  Some markdown
-     *  ```
-     *  const a = [];
-     *  const b = "";
-     *  ```
+     * Some markdown
+     * ```
+     * const a = [];
+     * const b = "";
+     * ```
      */
     a3_field: U128;
 
@@ -46,7 +46,7 @@ export type B = {
 }
 
 /**
- *  doc-comment for enum
+ * doc-comment for enum
  */
 export enum E {
     /**
@@ -63,18 +63,18 @@ export enum E {
  */
 export interface C {
     /**
-     *  init func
+     * init func
      */
     init_here: { f128: U128 };
 
     /**
-     *  Line 1 for get_f128 first
-     *  Line 2 for get_f128 second
+     * Line 1 for get_f128 first
+     * Line 2 for get_f128 second
      */
     get_f128(): Promise<U128>;
 
     /**
-     *  Set f128.
+     * Set f128.
      */
     set_f128(args: { value: U128 }, gas?: any): Promise<void>;
 
@@ -87,7 +87,7 @@ export interface C {
     more_types(args: { key: U128, tuple: [string, number[]] }, gas?: any): Promise<void>;
 
     /**
-     *  Pay to set f128.
+     * Pay to set f128.
      */
     set_f128_with_sum(args: { a_value: U128, other_value: U128 }, gas?: any, amount?: any): Promise<void>;
 
@@ -97,7 +97,7 @@ export interface C {
  */
 export interface C {
     /**
-     *  another impl
+     * another impl
      */
     another_impl(args: { f128: U128 }): Promise<U128>;
 
@@ -107,7 +107,7 @@ export interface C {
  */
 export interface I {
     /**
-     *  Single-line comment for get
+     * Single-line comment for get
      */
     get(): Promise<U128>;
 

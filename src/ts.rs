@@ -213,12 +213,12 @@ pub fn ts_contract_methods<W: Write>(buf: &mut W, contract: &Contract) -> io::Re
 /// near_syn::ts::ts_items(&mut buf, &ast.items, &mut contract);
 /// assert_eq!(String::from_utf8_lossy(&buf),
 /// r#"/**
-///  *  Doc-comments are translated.
+///  * Doc-comments are translated.
 ///  */
 /// export type T = number;
 ///
 /// /**
-///  *  Doc-comments are translated.
+///  * Doc-comments are translated.
 ///  */
 /// export type S = number;
 ///
@@ -318,11 +318,11 @@ pub fn ts_items<W: Write>(buf: &mut W, items: &Vec<Item>, contract: &Contract) -
 ///     }).unwrap(), &mut contract);
 /// assert_eq!(String::from_utf8_lossy(&buf),
 /// r#"/**
-///  *  Doc-comments are translated.
+///  * Doc-comments are translated.
 ///  */
 /// export interface Contract {
 ///     /**
-///      *  Doc-comments here are translated as well.
+///      * Doc-comments here are translated as well.
 ///      */
 ///     get(): Promise<number>;
 ///
@@ -376,11 +376,11 @@ pub fn ts_impl<W: Write>(buf: &mut W, item_impl: &ItemImpl, contract: &Contract)
 ///     }).unwrap());
 /// assert_eq!(String::from_utf8_lossy(&buf),
 /// r#"/**
-///  *  Doc-comments are also translated.
+///  * Doc-comments are also translated.
 ///  */
 /// export type A = {
 ///     /**
-///      *  Doc-comments here are translated as well.
+///      * Doc-comments here are translated as well.
 ///      */
 ///     field: number;
 ///
@@ -400,7 +400,7 @@ pub fn ts_impl<W: Write>(buf: &mut W, item_impl: &ItemImpl, contract: &Contract)
 ///     }).unwrap());
 /// assert_eq!(String::from_utf8_lossy(&buf),
 /// r#"/**
-///  *  Tuple struct with one component.
+///  * Tuple struct with one component.
 ///  */
 /// export type T = string;
 ///
@@ -420,7 +420,7 @@ pub fn ts_impl<W: Write>(buf: &mut W, item_impl: &ItemImpl, contract: &Contract)
 ///     }).unwrap());
 /// assert_eq!(String::from_utf8_lossy(&buf),
 /// r#"/**
-///  *  Tuple struct with one component.
+///  * Tuple struct with one component.
 ///  */
 /// export type T = [string, number];
 ///
@@ -498,11 +498,11 @@ pub fn ts_struct<W: Write>(buf: &mut W, item_struct: &ItemStruct) -> io::Result<
 ///     }).unwrap());
 /// assert_eq!(String::from_utf8_lossy(&buf),
 /// r#"/**
-///  *  Doc-comments are translated.
+///  * Doc-comments are translated.
 ///  */
 /// export enum E {
 ///     /**
-///      *  Doc-comments here are translated as well.
+///      * Doc-comments here are translated as well.
 ///      */
 ///     V1,
 ///
@@ -538,7 +538,7 @@ pub fn ts_enum<W: Write>(buf: &mut W, item_enum: &ItemEnum) -> io::Result<()> {
 ///     }).unwrap());
 /// assert_eq!(String::from_utf8_lossy(&buf),
 /// r#"/**
-///  *  Doc-comments are translated.
+///  * Doc-comments are translated.
 ///  */
 /// export type T = number;
 ///
@@ -573,16 +573,35 @@ pub fn ts_typedef<W: Write>(buf: &mut W, item_type: &syn::ItemType) -> io::Resul
     Ok(())
 }
 
+/// Translates `doc` attributes into TypeScript docs.
+/// The `indent` argument is used as a prefix for each line emitted.
 ///
+/// ### Examples
+///
+/// ```
+/// let mut buf = Vec::new();
+/// near_syn::ts::ts_doc(&mut buf, &syn::parse2::<syn::ItemType>(quote::quote! {
+///         /// Doc-comments are translated.
+///         type T = u64;
+///     }).unwrap().attrs, "    ");
+/// assert_eq!(String::from_utf8_lossy(&buf),
+/// r#"    /**
+///      * Doc-comments are translated.
+///      */
+/// "#);
+/// ```
 pub fn ts_doc<W: Write>(buf: &mut W, attrs: &Vec<Attribute>, indent: &str) -> io::Result<()> {
     writeln!(buf, "{}/**", indent)?;
-    write_docs(buf, attrs, |l| format!("{} * {}", indent, l))?;
+    write_docs(buf, attrs, |l| format!("{} * {}", indent, l.trim_start()))?;
     writeln!(buf, "{} */", indent)?;
 
     Ok(())
 }
 
 /// Return the TypeScript equivalent type of the Rust type represented by `ty`.
+/// 
+/// ### Examples
+/// 
 /// Rust primitives types and `String` are included.
 ///
 /// ```
