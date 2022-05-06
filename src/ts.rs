@@ -599,9 +599,9 @@ pub fn ts_doc<W: Write>(buf: &mut W, attrs: &Vec<Attribute>, indent: &str) -> io
 }
 
 /// Return the TypeScript equivalent type of the Rust type represented by `ty`.
-/// 
+///
 /// ### Examples
-/// 
+///
 /// Rust primitives types and `String` are included.
 ///
 /// ```
@@ -835,10 +835,9 @@ pub fn ts_ret_type(ret_type: &ReturnType) -> String {
         ReturnType::Default => "void".into(),
         ReturnType::Type(_, typ) => {
             let ty = ts_type(typ.deref());
-            if ty == "Promise" {
-                "void".to_string()
-            } else {
-                ty
+            match ty.as_str() {
+                "Promise" | "PromiseOrValue" => "void".to_string(),
+                _ => ty,
             }
         }
     }
