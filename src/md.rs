@@ -40,7 +40,7 @@ pub fn md_footer<W: Write>(buf: &mut W, bin: &str, now: String) -> io::Result<()
 
     writeln!(
         buf,
-        "\n---\n\n*This documentation was generated with* **{} v{}** <{}>{}",
+        "\n---\n\n_This documentation was generated with **{} v{}** <{}>{}_",
         bin,
         env!("CARGO_PKG_VERSION"),
         env!("CARGO_PKG_REPOSITORY"),

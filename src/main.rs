@@ -10,7 +10,7 @@ use near_syn::{
 use std::{
     env,
     fs::File,
-    io::{self, Read},
+    io::{self, Read, Write},
     path::Path,
 };
 
@@ -45,81 +45,70 @@ struct EmitArgs {
     files: Vec<String>,
 }
 
-fn main() -> io::Result<()> {
-    let args = Args::parse();
+pub struct Now {}
 
-    match args.cmd {
-        Cmd::TS(args) => emit_ts(args)?,
-        Cmd::MD(args) => emit_md(args)?,
-    }
-
-    Ok(())
-}
-
-fn emit_ts(args: EmitArgs) -> io::Result<()> {
-    let mut buf = std::io::stdout();
-    ts_prelude(
-        &mut buf,
-        if args.no_now {
+impl EmitArgs {
+    fn now(&self) -> String {
+        if self.no_now {
             "".to_string()
         } else {
             format!(" on {}", Utc::now())
-        },
-        env!("CARGO_BIN_NAME"),
-    )?;
-
-    let mut contract = Contract::new();
-
-    for file_name in args.files {
-        let ast = parse_rust(file_name);
-
-        contract.forward_traits(&ast.items);
-        ts_items(&mut buf, &ast.items, &contract)?;
+        }
     }
 
-    ts_extend_traits(&mut buf, &contract)?;
-    ts_contract_methods(&mut buf, &contract)?;
+    fn asts(&self) -> Vec<syn::File> {
+        self.files.iter().map(|file| parse_rust(file)).collect()
+    }
+}
+
+fn main() -> io::Result<()> {
+    let args = Args::parse();
+
+    let mut buf = std::io::stdout();
+
+    match args.cmd {
+        Cmd::TS(args) => emit_ts(&mut buf, args)?,
+        Cmd::MD(args) => emit_md(&mut buf, args)?,
+    }
 
     Ok(())
 }
 
-fn emit_md(args: EmitArgs) -> io::Result<()> {
-    let mut buf = io::stdout();
-    let utc_now = Utc::now();
+fn emit_ts<W: Write>(buf: &mut W, args: EmitArgs) -> io::Result<()> {
+    ts_prelude(buf, args.now(), env!("CARGO_BIN_NAME"))?;
 
-    md_prelude(
-        &mut buf,
-        if args.no_now {
-            "".to_string()
-        } else {
-            format!(" on {}", utc_now)
-        },
-    )?;
+    let mut contract = Contract::new();
+
+    for ast in args.asts() {
+        contract.forward_traits(&ast.items);
+        ts_items(buf, &ast.items, &contract)?;
+    }
+
+    ts_extend_traits(buf, &contract)?;
+    ts_contract_methods(buf, &contract)?;
+
+    Ok(())
+}
+
+fn emit_md<W: Write>(buf: &mut W, args: EmitArgs) -> io::Result<()> {
+    let now = args.now();
+
+    md_prelude(buf, now.clone())?;
 
     let mut contract = Contract::new();
 
     let mut asts = Vec::new();
-    for file_name in &args.files {
-        let ast = parse_rust(file_name);
+    for ast in args.asts() {
         contract.forward_traits(&ast.items);
         asts.push(ast);
     }
-    md_methods_table(&mut buf, &asts, &contract)?;
+    md_methods_table(buf, &asts, &contract)?;
 
-    for file_name in &args.files {
-        let ast = parse_rust(file_name);
-        md_items(&mut buf, &ast, &contract)?;
+    for ast in args.asts() {
+        md_items(buf, &ast, &contract)?;
     }
 
-    md_footer(
-        &mut buf,
-        env!("CARGO_BIN_NAME"),
-        if args.no_now {
-            "".to_string()
-        } else {
-            format!(" *on {}*", utc_now)
-        },
-    )?;
+    md_footer(buf, env!("CARGO_BIN_NAME"), now)?;
 
     Ok(())
 }

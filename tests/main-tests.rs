@@ -122,7 +122,7 @@ References
 
 ---
 
-*This documentation was generated with* **near-syn v{}** <{}>
+_This documentation was generated with **near-syn v{}** <{}>_
 "#,
             text,
             env!("CARGO_PKG_VERSION"),
