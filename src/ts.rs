@@ -100,7 +100,7 @@ pub fn ts_prelude<W: Write>(buf: &mut W, now: String, bin_name: &str) -> io::Res
 ///
 /// ```
 /// let mut contract = near_syn::contract::Contract::new();
-/// contract.name = "Contract".to_string();
+/// contract.name = Some("Contract".to_string());
 /// contract.interfaces.push("NftCore".to_string());
 /// contract.interfaces.push("NftEnum".to_string());
 /// let mut buf = Vec::new();
@@ -108,11 +108,11 @@ pub fn ts_prelude<W: Write>(buf: &mut W, now: String, bin_name: &str) -> io::Res
 /// assert_eq!(String::from_utf8_lossy(&buf), "export interface Contract extends NftCore, NftEnum {}\n\n");
 /// ```
 pub fn ts_extend_traits<W: Write>(buf: &mut W, contract: &Contract) -> io::Result<()> {
-    if !contract.name.is_empty() && !contract.interfaces.is_empty() {
+    if contract.name.is_some() && !contract.interfaces.is_empty() {
         writeln!(
             buf,
             "export interface {} extends {} {{}}\n",
-            contract.name,
+            contract.name.as_ref().unwrap(),
             contract.interfaces.join(", ")
         )?;
     }
@@ -127,7 +127,7 @@ pub fn ts_extend_traits<W: Write>(buf: &mut W, contract: &Contract) -> io::Resul
 ///
 /// ```
 /// let mut contract = near_syn::contract::Contract::new();
-/// contract.name = "Contract".to_string();
+/// contract.name = Some("Contract".to_string());
 /// contract.view_methods.push("get".to_string());
 /// contract.change_methods.push("set".to_string());
 /// contract.change_methods.push("insert".to_string());
@@ -152,7 +152,7 @@ pub fn ts_extend_traits<W: Write>(buf: &mut W, contract: &Contract) -> io::Resul
 ///
 /// ```
 /// let mut contract = near_syn::contract::Contract::new();
-/// contract.name = "Contract".to_string();
+/// contract.name = Some("Contract".to_string());
 /// contract.view_methods.push("get".to_string());
 /// let mut buf = Vec::new();
 /// near_syn::ts::ts_contract_methods(&mut buf, &contract);
@@ -175,7 +175,11 @@ pub fn ts_contract_methods<W: Write>(buf: &mut W, contract: &Contract) -> io::Re
             .join("")
     }
 
-    writeln!(buf, "export const {}Methods = {{", contract.name)?;
+    writeln!(
+        buf,
+        "export const {}Methods = {{",
+        contract.name.clone().unwrap_or_default()
+    )?;
     writeln!(
         buf,
         "    viewMethods: [\n{}    ],",

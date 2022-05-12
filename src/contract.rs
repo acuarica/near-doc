@@ -47,7 +47,7 @@ impl NearItemTrait {
 /// Represents a pass to several Rust files to build a NEAR Rust Contract.
 pub struct Contract {
     /// Represents the name of the Contract to export.
-    pub name: String,
+    pub name: Option<String>,
 
     /// All trait definitions used in forward declarations.
     pub traits: HashMap<String, NearItemTrait>,
@@ -69,7 +69,7 @@ impl Contract {
     /// Creates a new `Contract` instance with default values.
     pub fn new() -> Self {
         Self {
-            name: String::new(),
+            name: None,
             traits: HashMap::new(),
             interfaces: Vec::new(),
             view_methods: Vec::new(),
@@ -87,7 +87,7 @@ impl Contract {
                         if let Some(trait_name) = item_impl.get_trait_name() {
                             self.interfaces.push(trait_name);
                         } else if let Some(impl_name) = item_impl.get_impl_name() {
-                            self.name = impl_name;
+                            self.name = Some(impl_name);
                         }
 
                         for method in methods {
