@@ -1,7 +1,7 @@
 //! Allows the user to build a NEAR Rust Contract from multiple Rust source files.
 use std::{collections::HashMap, ops::Deref};
 
-use syn::{Item, ItemTrait, TraitItem, TraitItemMethod};
+use syn::{ImplItemMethod, Item, ItemImpl, ItemTrait, TraitItem, TraitItemMethod};
 
 use crate::{NearImpl, NearMethod};
 
@@ -55,6 +55,12 @@ pub struct Contract {
     /// Keeps track of `impl` items of the contract.
     pub interfaces: Vec<String>,
 
+    ///
+    pub methods: HashMap<String, (ImplItemMethod, ItemImpl)>,
+
+    /// Keeps track of the `view_methods` in the contract.
+    pub init_methods: Vec<String>,
+
     /// Keeps track of the `view_methods` in the contract.
     pub view_methods: Vec<String>,
 
@@ -72,6 +78,8 @@ impl Contract {
             name: None,
             traits: HashMap::new(),
             interfaces: Vec::new(),
+            methods: HashMap::new(),
+            init_methods: Vec::new(),
             view_methods: Vec::new(),
             change_methods: Vec::new(),
             items: Vec::new(),
@@ -91,16 +99,18 @@ impl Contract {
                         }
 
                         for method in methods {
-                            if method.is_init() {
-                                continue;
-                            }
+                            let name = method.sig.ident.to_string();
+                            self.methods
+                                .insert(name.clone(), (method.clone(), item_impl.clone()));
 
-                            if method.is_mut() {
+                            if method.is_init() {
+                                &mut self.init_methods
+                            } else if method.is_mut() {
                                 &mut self.change_methods
                             } else {
                                 &mut self.view_methods
                             }
-                            .push(method.sig.ident.to_string());
+                            .push(name);
                         }
                     }
                 }

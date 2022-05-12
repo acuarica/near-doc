@@ -144,7 +144,7 @@ fn emit_md<W: Write>(buf: &mut W, args: &EmitArgs) -> io::Result<()> {
         contract.forward_traits(&ast.items);
         asts.push(ast);
     }
-    md_methods_table(buf, &asts, &contract)?;
+    md_methods_table(buf, &contract)?;
 
     for ast in args.asts() {
         md_items(buf, &ast, &contract)?;
@@ -163,7 +163,7 @@ fn emit_md_table<W: Write>(buf: &mut W, args: &EmitArgs) -> io::Result<()> {
         contract.forward_traits(&ast.items);
         asts.push(ast);
     }
-    md_methods_table(buf, &asts, &contract)?;
+    md_methods_table(buf, &contract)?;
     Ok(())
 }
 

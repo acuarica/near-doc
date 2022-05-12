@@ -1,7 +1,7 @@
 //! Markdown
 use std::io::{self, Write};
 
-use syn::{File, ImplItemMethod, Item};
+use syn::{ImplItemMethod, Item};
 
 use crate::{
     contract::{Contract, NearItemTrait},
@@ -51,54 +51,57 @@ pub fn md_footer<W: Write>(buf: &mut W, bin: &str, now: String) -> io::Result<()
 }
 
 ///
-pub fn md_methods_table<W: Write>(
-    buf: &mut W,
-    asts: &Vec<File>,
-    contract: &Contract,
-) -> io::Result<()> {
-    writeln!(buf, "| Method | Description | Return |")?;
-    writeln!(buf, "| ------ | ----------- | ------ |")?;
-
-    for ast in asts {
-        for item in &ast.items {
-            if let Item::Impl(impl_item) = item {
-                if let Some(methods) = impl_item.bindgen_methods() {
-                    let item_trait = if let Some(trait_name) = impl_item.get_trait_name() {
-                        contract.traits.get(&trait_name)
-                    } else {
-                        None
-                    };
-                    md_methods_table_rows(buf, &methods, item_trait)?;
-                }
+pub fn md_methods_table<W: Write>(buf: &mut W, contract: &Contract) -> io::Result<()> {
+    fn write_section<W: Write>(
+        buf: &mut W,
+        title: &str,
+        methods: &Vec<String>,
+        contract: &Contract,
+    ) -> io::Result<()> {
+        writeln!(buf, "> **{}**", title)?;
+        writeln!(buf, "")?;
+        writeln!(buf, "| Method | Description | Return |")?;
+        writeln!(buf, "| ------ | ----------- | ------ |")?;
+        for name in methods {
+            if let Some((method, impl_item)) = contract.methods.get(name) {
+                let item_trait = if let Some(trait_name) = impl_item.get_trait_name() {
+                    contract.traits.get(&trait_name)
+                } else {
+                    None
+                };
+                md_methods_table_row(buf, &method, item_trait)?;
             }
         }
+        writeln!(buf, "")?;
+
+        Ok(())
     }
 
-    writeln!(buf, "")?;
+    write_section(buf, "Init Methods", &contract.init_methods, contract)?;
+    write_section(buf, "View Methods", &contract.view_methods, contract)?;
+    write_section(buf, "Change Methods", &contract.change_methods, contract)?;
 
     Ok(())
 }
 
 ///
-pub fn md_methods_table_rows<W: Write>(
+pub fn md_methods_table_row<W: Write>(
     buf: &mut W,
-    methods: &Vec<&ImplItemMethod>,
+    method: &ImplItemMethod,
     item_trait: Option<&NearItemTrait>,
 ) -> io::Result<()> {
-    for method in methods {
-        let (mut_mod, init_decl) = method.mods();
-        let docs = get_docs(&method.join_attrs(item_trait)).join(" ");
+    let (mut_mod, init_decl) = method.mods();
+    let docs = get_docs(&method.join_attrs(item_trait)).join(" ");
 
-        writeln!(
-            buf,
-            "| {} `{}`{} | {} | `{}` |",
-            mut_mod,
-            method.sig.ident,
-            init_decl,
-            docs,
-            ts_ret_type(&method.sig.output).replace('|', "\\|"),
-        )?;
-    }
+    writeln!(
+        buf,
+        "| {} `{}`{} | {} | `{}` |",
+        mut_mod,
+        method.sig.ident,
+        init_decl,
+        docs,
+        ts_ret_type(&method.sig.output).replace('|', "\\|"),
+    )?;
 
     Ok(())
 }

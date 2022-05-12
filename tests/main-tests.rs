@@ -106,9 +106,12 @@ mod md {
     use super::{near_cmd, rust_test_files};
     use assert_cmd::Command;
 
-    fn output(text: &str) -> String {
+    fn output(init_methods: &str, view_methods: &str, change_methods: &str, text: &str) -> String {
         format!(
             include_str!("input/_template.md"),
+            init_methods,
+            view_methods,
+            change_methods,
             text,
             env!("CARGO_PKG_VERSION"),
             env!("CARGO_PKG_REPOSITORY"),
@@ -121,7 +124,7 @@ mod md {
 
     #[test]
     fn transpile_zero_rust_files_to_md() {
-        near_md().assert().code(0).stdout(output("\n"));
+        near_md().assert().code(0).stdout(output("", "", "", ""));
     }
 
     #[test]
@@ -132,7 +135,19 @@ mod md {
             .arg(paths[0].to_str().unwrap())
             .assert()
             .code(0)
-            .stdout(output(include_str!("input/output2.md")));
+            .stdout(output(
+                r#"| :rocket: `init_here` (_constructor_) |  init func | `Self` |
+"#, 
+                r#"| :eyeglasses: `get_f128` |  Line 1 for get_f128 first  Line 2 for get_f128 second | `U128` |
+| :eyeglasses: `get_f128_other_way` |  | `U128` |
+| :eyeglasses: `another_impl` |  another impl | `U128` |
+| :eyeglasses: `get` |  Single-line comment for get | `U128` |
+"#, 
+                r#"| :writing_hand: `set_f128` |  Set f128. | `void` |
+| :writing_hand: `more_types` |  | `void` |
+| &#x24C3; `set_f128_with_sum` |  Pay to set f128. | `void` |
+"#, 
+                include_str!("input/output2.md")));
 
         paths.into_iter().for_each(|path| path.close().unwrap());
     }
