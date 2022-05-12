@@ -24,7 +24,7 @@ pub mod ts;
 /// since the `struct` is not part of the public interface of the NEAR contract.
 ///
 /// An overview of the `near_bindgen` attribute macro can be found in
-/// https://www.near-sdk.io/contract-structure/near-bindgen.
+/// <https://www.near-sdk.io/contract-structure/near-bindgen>.
 pub trait NearImpl {
     /// Returns whether the given `self` implementation is marked as `near_bindgen`.
     /// This should be an indication to further process this `impl` item.
@@ -51,7 +51,7 @@ pub trait NearImpl {
     /// Returns whether the given `self` implementation has any exported method.
     ///
     /// For more info on public method in the NEAR SDK,
-    /// see https://www.near-sdk.io/contract-interface/public-methods.
+    /// see <https://www.near-sdk.io/contract-interface/public-methods>.
     fn exported_methods(&self) -> Vec<&ImplItemMethod>;
 
     /// Returns the exported methods if `self` `is_bindgen`.
@@ -317,7 +317,7 @@ pub fn get_docs(attrs: &Vec<Attribute>) -> Vec<String> {
 
 /// Writes Rust `doc` comments to `file`.
 /// Each line of `doc` is prefixed with `prefix`.
-/// See https://doc.rust-lang.org/rustdoc/the-doc-attribute.html.
+/// See <https://doc.rust-lang.org/rustdoc/the-doc-attribute.html>.
 pub fn write_docs<W: Write, F: Fn(String) -> String>(
     file: &mut W,
     attrs: &Vec<Attribute>,

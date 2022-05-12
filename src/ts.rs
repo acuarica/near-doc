@@ -11,7 +11,7 @@ use syn::{
 };
 
 /// Exports common NEAR Rust SDK types based on
-/// https://docs.rs/near-sdk/4.0.0-pre.4/near_sdk/.
+/// <https://docs.rs/near-sdk/4.0.0-pre.4/near_sdk/>.
 /// Moreover, it adds a header indicating the time and binary that
 /// generated these bindings.
 ///
