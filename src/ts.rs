@@ -1,13 +1,16 @@
 //! Functions to transpile Rust to TypeScript.
 
-use crate::{contract::Contract, write_docs, NearImpl, NearMethod, NearSerde};
+use crate::{
+    contract::{Contract, NearItem},
+    write_docs, NearImpl, NearMethod, NearSerde,
+};
 use std::{
     io::{self, Write},
     ops::Deref,
 };
 use syn::{
-    Attribute, Fields, ImplItemMethod, Item, ItemEnum, ItemImpl, ItemStruct, PathArguments,
-    ReturnType, Type,
+    Attribute, Fields, ImplItemMethod, ItemEnum, ItemImpl, ItemStruct, PathArguments, ReturnType,
+    Type,
 };
 
 /// Exports common NEAR Rust SDK types based on
@@ -204,7 +207,6 @@ pub fn ts_contract_methods<W: Write>(buf: &mut W, contract: &Contract) -> io::Re
 /// Notice how `mod` definitions are flattened:
 ///
 /// ```
-/// let mut contract = near_syn::contract::Contract::new();
 /// let mut buf = Vec::new();
 /// let ast: syn::File = syn::parse2(quote::quote! {
 ///         /// Doc-comments are translated.
@@ -214,7 +216,9 @@ pub fn ts_contract_methods<W: Write>(buf: &mut W, contract: &Contract) -> io::Re
 ///             type S = u64;
 ///         }
 ///     }).unwrap();
-/// near_syn::ts::ts_items(&mut buf, &ast.items, &mut contract);
+/// let mut contract = near_syn::contract::Contract::new();
+/// contract.push_ast(ast);
+/// near_syn::ts::ts_items(&mut buf, &mut contract);
 /// assert_eq!(String::from_utf8_lossy(&buf),
 /// r#"/**
 ///  * Doc-comments are translated.
@@ -248,9 +252,9 @@ pub fn ts_contract_methods<W: Write>(buf: &mut W, contract: &Contract) -> io::Re
 ///
 ///     }).unwrap();
 /// let mut contract = near_syn::contract::Contract::new();
-/// contract.forward_traits(&ast.items);
+/// contract.push_ast(ast);
 /// let mut buf = Vec::new();
-/// near_syn::ts::ts_items(&mut buf, &ast.items, &mut contract);
+/// near_syn::ts::ts_items(&mut buf, &mut contract);
 /// near_syn::ts::ts_extend_traits(&mut buf, &contract);
 /// assert_eq!(String::from_utf8_lossy(&buf),
 /// r#"/**
@@ -284,19 +288,13 @@ pub fn ts_contract_methods<W: Write>(buf: &mut W, contract: &Contract) -> io::Re
 ///
 /// "#);
 /// ```
-pub fn ts_items<W: Write>(buf: &mut W, items: &Vec<Item>, contract: &Contract) -> io::Result<()> {
-    for item in items {
+pub fn ts_items<W: Write>(buf: &mut W, contract: &Contract) -> io::Result<()> {
+    for item in &contract.items {
         match item {
-            Item::Mod(item_mod) => {
-                if let Some((_, mod_items)) = &item_mod.content {
-                    ts_items(buf, mod_items, contract)?;
-                }
-            }
-            Item::Impl(item_impl) => ts_impl(buf, &item_impl, contract)?,
-            Item::Struct(item_struct) => ts_struct(buf, &item_struct)?,
-            Item::Enum(item_enum) => ts_enum(buf, &item_enum)?,
-            Item::Type(item_type) => ts_typedef(buf, &item_type)?,
-            _ => {}
+            NearItem::Impl(item_impl) => ts_impl(buf, &item_impl, contract)?,
+            NearItem::Struct(item_struct) => ts_struct(buf, &item_struct)?,
+            NearItem::Enum(item_enum) => ts_enum(buf, &item_enum)?,
+            NearItem::Type(item_type) => ts_typedef(buf, &item_type)?,
         }
     }
 
@@ -346,7 +344,7 @@ pub fn ts_impl<W: Write>(buf: &mut W, item_impl: &ItemImpl, contract: &Contract)
                 ts_doc(buf, &item_impl.attrs, "")?;
                 writeln!(buf, "export interface {} {{", impl_name)?;
             } else {
-                panic!("name not found")
+                panic!("Impl struct name not supported")
             }
         }
 
@@ -418,7 +416,7 @@ pub fn ts_impl<W: Write>(buf: &mut W, item_impl: &ItemImpl, contract: &Contract)
 /// ```
 /// let mut buf = Vec::new();
 /// near_syn::ts::ts_struct(&mut buf, &syn::parse2(quote::quote! {
-///         /// Tuple struct with one component.
+///         /// Tuple struct with two components.
 ///         #[derive(Serialize)]
 ///         struct T(String, u32);
 ///     }).unwrap());
@@ -441,41 +439,39 @@ pub fn ts_impl<W: Write>(buf: &mut W, item_impl: &ItemImpl, contract: &Contract)
 /// assert_eq!(String::from_utf8_lossy(&buf), "");
 /// ```
 pub fn ts_struct<W: Write>(buf: &mut W, item_struct: &ItemStruct) -> io::Result<()> {
-    if !item_struct.is_serde() {
-        return Ok(());
-    }
-
-    ts_doc(buf, &item_struct.attrs, "")?;
-    match &item_struct.fields {
-        Fields::Named(fields) => {
-            writeln!(buf, "export type {} = {{", item_struct.ident)?;
-            for field in &fields.named {
-                let field_name = field.ident.as_ref().unwrap();
-                let ty = ts_type(&field.ty);
-                ts_doc(buf, &field.attrs, "    ")?;
-                writeln!(buf, "    {}: {};\n", field_name, ty)?;
-            }
-            writeln!(buf, "}}")?;
-            writeln!(buf, "")?;
-        }
-        Fields::Unnamed(fields) => {
-            let mut tys = Vec::new();
-            for field in &fields.unnamed {
-                let ty = ts_type(&field.ty);
-                tys.push(ty);
-            }
-            writeln!(
-                buf,
-                "export type {} = {};\n",
-                item_struct.ident,
-                if tys.len() == 1 {
-                    tys.get(0).unwrap().clone()
-                } else {
-                    format!("[{}]", tys.join(", "))
+    if item_struct.is_serde() {
+        ts_doc(buf, &item_struct.attrs, "")?;
+        match &item_struct.fields {
+            Fields::Named(fields) => {
+                writeln!(buf, "export type {} = {{", item_struct.ident)?;
+                for field in &fields.named {
+                    let field_name = field.ident.as_ref().unwrap();
+                    let ty = ts_type(&field.ty);
+                    ts_doc(buf, &field.attrs, "    ")?;
+                    writeln!(buf, "    {}: {};\n", field_name, ty)?;
                 }
-            )?;
+                writeln!(buf, "}}")?;
+                writeln!(buf, "")?;
+            }
+            Fields::Unnamed(fields) => {
+                let mut tys = Vec::new();
+                for field in &fields.unnamed {
+                    let ty = ts_type(&field.ty);
+                    tys.push(ty);
+                }
+                writeln!(
+                    buf,
+                    "export type {} = {};\n",
+                    item_struct.ident,
+                    if tys.len() == 1 {
+                        tys.get(0).unwrap().clone()
+                    } else {
+                        format!("[{}]", tys.join(", "))
+                    }
+                )?;
+            }
+            Fields::Unit => panic!("unit struct no supported"),
         }
-        Fields::Unit => panic!("unit struct no supported"),
     }
 
     Ok(())
@@ -515,17 +511,15 @@ pub fn ts_struct<W: Write>(buf: &mut W, item_struct: &ItemStruct) -> io::Result<
 /// "#);
 /// ```
 pub fn ts_enum<W: Write>(buf: &mut W, item_enum: &ItemEnum) -> io::Result<()> {
-    if !item_enum.is_serde() {
-        return Ok(());
+    if item_enum.is_serde() {
+        ts_doc(buf, &item_enum.attrs, "")?;
+        writeln!(buf, "export enum {} {{", item_enum.ident)?;
+        for variant in &item_enum.variants {
+            ts_doc(buf, &variant.attrs, "    ")?;
+            writeln!(buf, "    {},\n", variant.ident)?;
+        }
+        writeln!(buf, "}}\n")?;
     }
-
-    ts_doc(buf, &item_enum.attrs, "")?;
-    writeln!(buf, "export enum {} {{", item_enum.ident)?;
-    for variant in &item_enum.variants {
-        ts_doc(buf, &variant.attrs, "    ")?;
-        writeln!(buf, "    {},\n", variant.ident)?;
-    }
-    writeln!(buf, "}}\n")?;
 
     Ok(())
 }
@@ -613,12 +607,8 @@ pub fn ts_doc<W: Write>(buf: &mut W, attrs: &Vec<Attribute>, indent: &str) -> io
 /// use near_syn::ts::ts_type;
 ///
 /// assert_eq!(ts_type(&parse_str("bool").unwrap()), "boolean");
-/// assert_eq!(ts_type(&parse_str("i8").unwrap()), "number");
 /// assert_eq!(ts_type(&parse_str("u8").unwrap()), "number");
-/// assert_eq!(ts_type(&parse_str("i16").unwrap()), "number");
-/// assert_eq!(ts_type(&parse_str("u16").unwrap()), "number");
-/// assert_eq!(ts_type(&parse_str("i32").unwrap()), "number");
-/// assert_eq!(ts_type(&parse_str("u32").unwrap()), "number");
+/// assert_eq!(ts_type(&parse_str("i64").unwrap()), "number");
 /// assert_eq!(ts_type(&parse_str("String").unwrap()), "string");
 /// ```
 ///
@@ -640,11 +630,8 @@ pub fn ts_doc<W: Write>(buf: &mut W, attrs: &Vec<Attribute>, indent: &str) -> io
 /// # use syn::parse_str;
 /// # use near_syn::ts::ts_type;
 /// assert_eq!(ts_type(&parse_str("Option<U64>").unwrap()), "U64|null");
-/// assert_eq!(ts_type(&parse_str("Option<String>").unwrap()), "string|null");
 /// assert_eq!(ts_type(&parse_str("Vec<ValidAccountId>").unwrap()), "ValidAccountId[]");
 /// assert_eq!(ts_type(&parse_str("HashSet<ValidAccountId>").unwrap()), "ValidAccountId[]");
-/// assert_eq!(ts_type(&parse_str("BTreeSet<ValidAccountId>").unwrap()), "ValidAccountId[]");
-/// assert_eq!(ts_type(&parse_str("HashMap<AccountId, U128>").unwrap()), "Record<AccountId, U128>");
 /// assert_eq!(ts_type(&parse_str("BTreeMap<AccountId, U128>").unwrap()), "Record<AccountId, U128>");
 /// ```
 ///
@@ -655,14 +642,17 @@ pub fn ts_doc<W: Write>(buf: &mut W, attrs: &Vec<Attribute>, indent: &str) -> io
 /// # use near_syn::ts::ts_type;
 /// assert_eq!(ts_type(&parse_str("HashMap<AccountId, Vec<U128>>").unwrap()), "Record<AccountId, U128[]>");
 /// assert_eq!(ts_type(&parse_str("Vec<Option<U128>>").unwrap()), "(U128|null)[]");
-/// assert_eq!(ts_type(&parse_str("Option<Vec<U128>>").unwrap()), "U128[]|null");
-/// assert_eq!(ts_type(&parse_str("Option<Option<U64>>").unwrap()), "U64|null|null");
 /// assert_eq!(ts_type(&parse_str("Vec<Vec<U64>>").unwrap()), "U64[][]");
-/// assert_eq!(ts_type(&parse_str("(U64)").unwrap()), "U64");
 /// assert_eq!(ts_type(&parse_str("(U64, String, Vec<u32>)").unwrap()), "[U64, string, number[]]");
+/// ```
 ///
-/// assert_eq!(ts_type(&parse_str("()").unwrap()), "void");
-/// // assert_eq!(ts_type(&parse_str("std::vec::Vec<U64>").unwrap()), "U64[]");
+/// Rust tuples are converted to TypeScript tuples.
+/// They are denoted with array syntax.
+///
+/// ```
+/// # use syn::parse_str;
+/// # use near_syn::ts::ts_type;
+/// assert_eq!(ts_type(&parse_str("(U64, String, Vec<u32>)").unwrap()), "[U64, string, number[]]");
 /// ```
 ///
 /// ## Panics
@@ -715,8 +705,7 @@ pub fn ts_type(ty: &Type) -> String {
         match ty {
             Type::Path(p) => match crate::join_path(&p.path).as_str() {
                 "bool" => single("boolean"),
-                "u64" => single("number"),
-                "i8" | "u8" | "i16" | "u16" | "i32" | "u32" => single("number"),
+                "i8" | "u8" | "i16" | "u16" | "i32" | "u32" | "u64" | "i64" => single("number"),
                 "String" => single("string"),
                 "Option" => {
                     let targs = gen_args(p, 1, "Option");
@@ -801,7 +790,7 @@ pub fn ts_sig(method: &ImplItemMethod) -> String {
         let mut args_decl = Vec::new();
         if args.len() > 0 {
             args_decl.push(format!("args: {{ {} }}", args.join(", ")));
-        };
+        }
         if method.is_mut() {
             args_decl.push("gas?: any".into());
         }
@@ -822,7 +811,7 @@ pub fn ts_sig(method: &ImplItemMethod) -> String {
 /// The resulting TypeScript return type is a valid output type expected by the NEAR RPC.
 /// Thus, the following conversion are applied:
 /// - Types are converted using `ts_type`
-/// - Return type of `Promise` is mapped to `void`.
+/// - Return type of `Promise` or `PromiveOrValue` are mapped to `void`.
 ///
 /// ### Examples
 ///
@@ -831,9 +820,8 @@ pub fn ts_sig(method: &ImplItemMethod) -> String {
 /// use near_syn::ts::ts_ret_type;
 ///
 /// assert_eq!(ts_ret_type(&parse_str(" ").unwrap()), "void");
-/// assert_eq!(ts_ret_type(&parse_str("-> Promise<u32>").unwrap()), "void");
 /// assert_eq!(ts_ret_type(&parse_str("-> Vec<Token>").unwrap()), "Token[]");
-/// assert_eq!(ts_ret_type(&parse_str("-> u32").unwrap()), "number");
+/// assert_eq!(ts_ret_type(&parse_str("-> Promise<u32>").unwrap()), "void");
 pub fn ts_ret_type(ret_type: &ReturnType) -> String {
     match ret_type {
         ReturnType::Default => "void".into(),
@@ -844,47 +832,5 @@ pub fn ts_ret_type(ret_type: &ReturnType) -> String {
                 _ => ty,
             }
         }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-
-    use crate::ts::ts_type;
-
-    #[test]
-    #[should_panic(expected = "Option used with no generic arg")]
-    fn ts_type_on_option_with_no_args_should_panic() {
-        ts_type(&syn::parse_str("Option").unwrap());
-    }
-
-    #[test]
-    #[should_panic(expected = "Option expects 1 generic(s) argument(s), found 2")]
-    fn ts_type_on_option_with_more_than_one_arg_should_panic() {
-        ts_type(&syn::parse_str("Option<String, U128>").unwrap());
-    }
-
-    #[test]
-    #[should_panic(expected = "Vec used with no generic arg")]
-    fn ts_type_on_vec_with_no_args_should_panic() {
-        ts_type(&syn::parse_str("Vec").unwrap());
-    }
-
-    #[test]
-    #[should_panic(expected = "Vec expects 1 generic(s) argument(s), found 3")]
-    fn ts_type_on_vec_with_more_than_one_arg_should_panic() {
-        ts_type(&syn::parse_str("Vec<String, U128, u32>").unwrap());
-    }
-
-    #[test]
-    #[should_panic(expected = "HashMap used with no generic arguments")]
-    fn ts_type_on_hashmap_with_no_args_should_panic() {
-        ts_type(&syn::parse_str("HashMap").unwrap());
-    }
-
-    #[test]
-    #[should_panic(expected = "HashMap expects 2 generic(s) argument(s), found 1")]
-    fn ts_type_on_hashmap_with_less_than_two_args_should_panic() {
-        ts_type(&syn::parse_str("HashMap<U64>").unwrap());
     }
 }

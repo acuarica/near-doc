@@ -26,21 +26,6 @@ pub mod ts;
 /// An overview of the `near_bindgen` attribute macro can be found in
 /// <https://www.near-sdk.io/contract-structure/near-bindgen>.
 pub trait NearImpl {
-    /// Returns whether the given `self` implementation is marked as `near_bindgen`.
-    /// This should be an indication to further process this `impl` item.
-    ///
-    /// ### Examples
-    ///
-    /// The following `impl` item is marked as `near_bindgen`.
-    ///
-    /// ```compile_fail
-    /// #[near_bindgen]
-    /// impl Counter {
-    ///     // methods...
-    /// }
-    /// ```
-    fn is_bindgen(&self) -> bool;
-
     /// Returns the trait name this `impl` implements, if any.
     fn get_trait_name(&self) -> Option<String>;
 
@@ -65,10 +50,6 @@ pub trait NearImpl {
 }
 
 impl NearImpl for ItemImpl {
-    fn is_bindgen(&self) -> bool {
-        has_attr(&self.attrs, "near_bindgen")
-    }
-
     fn get_trait_name(&self) -> Option<String> {
         if let Some((_excl, trait_path, _for)) = &self.trait_ {
             let trait_name = join_path(trait_path);
@@ -191,6 +172,30 @@ impl NearMethod for ImplItemMethod {
     }
 }
 
+///
+pub trait NearBindgen {
+    /// Returns whether the given `self` implementation is marked as `near_bindgen`.
+    /// This should be an indication to further process this `impl` item.
+    ///
+    /// ### Examples
+    ///
+    /// The following `impl` item is marked as `near_bindgen`.
+    ///
+    /// ```compile_fail
+    /// #[near_bindgen]
+    /// impl Counter {
+    ///     // methods...
+    /// }
+    /// ```
+    fn is_bindgen(&self) -> bool;
+}
+
+impl<I: NearAttributable> NearBindgen for I {
+    fn is_bindgen(&self) -> bool {
+        has_attr(&self.attrs(), "near_bindgen")
+    }
+}
+
 /// Defines methods to deal with serde's declarations in `struct`s or `enum`s.
 pub trait NearSerde {
     /// Returns whether the given `self` item derives `serde::Serialize`.
@@ -221,6 +226,12 @@ impl<I: NearAttributable> NearSerde for I {
 pub trait NearAttributable {
     /// The attributes of this item.
     fn attrs(&self) -> &Vec<Attribute>;
+}
+
+impl NearAttributable for ItemImpl {
+    fn attrs(&self) -> &Vec<Attribute> {
+        &self.attrs
+    }
 }
 
 impl NearAttributable for ItemStruct {

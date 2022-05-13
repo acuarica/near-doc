@@ -1,6 +1,6 @@
 mod near_impl {
 
-    use near_syn::NearImpl;
+    use near_syn::{NearBindgen, NearImpl};
     use proc_macro2::TokenStream;
     use quote::quote;
     use syn::{parse2, ItemImpl};

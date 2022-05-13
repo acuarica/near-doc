@@ -1,10 +1,11 @@
 //! Markdown
+
 use std::io::{self, Write};
 
-use syn::{ImplItemMethod, Item};
+use syn::ImplItemMethod;
 
 use crate::{
-    contract::{Contract, NearItemTrait},
+    contract::{Contract, NearItem, NearItemTrait},
     get_docs,
     ts::{ts_ret_type, ts_sig},
     write_docs, NearImpl, NearMethod,
@@ -107,11 +108,11 @@ pub fn md_methods_table_row<W: Write>(
 }
 
 ///
-pub fn md_items<W: Write>(buf: &mut W, syntax: &syn::File, contract: &Contract) -> io::Result<()> {
-    write_docs(buf, &syntax.attrs, |l| l.trim().to_string())?;
+pub fn md_items<W: Write>(buf: &mut W, contract: &Contract) -> io::Result<()> {
+    write_docs(buf, &contract.top_level_attrs, |l| l.trim().to_string())?;
 
-    for item in &syntax.items {
-        if let Item::Impl(impl_item) = item {
+    for item in &contract.items {
+        if let NearItem::Impl(impl_item) = item {
             if let Some(methods) = impl_item.bindgen_methods() {
                 let item_trait = if let Some(trait_name) = impl_item.get_trait_name() {
                     writeln!(buf, "\n## Methods for `{}` interface", trait_name)?;
