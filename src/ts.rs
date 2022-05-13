@@ -422,7 +422,7 @@ pub fn ts_impl<W: Write>(buf: &mut W, item_impl: &ItemImpl, contract: &Contract)
 ///     }).unwrap());
 /// assert_eq!(String::from_utf8_lossy(&buf),
 /// r#"/**
-///  * Tuple struct with one component.
+///  * Tuple struct with two components.
 ///  */
 /// export type T = [string, number];
 ///
