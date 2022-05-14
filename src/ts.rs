@@ -2,7 +2,7 @@
 
 use crate::{
     contract::{Contract, NearItem},
-    write_docs, NearImpl, NearMethod, NearSerde,
+    near_sdk_syn::{join_path, write_docs, NearImpl, NearMethod, NearSerde},
 };
 use std::{
     io::{self, Write},
@@ -703,7 +703,7 @@ pub fn ts_type(ty: &Type) -> String {
 
     fn ts_type_assoc(ty: &Type) -> (String, Assoc) {
         match ty {
-            Type::Path(p) => match crate::join_path(&p.path).as_str() {
+            Type::Path(p) => match join_path(&p.path).as_str() {
                 "bool" => single("boolean"),
                 "i8" | "u8" | "i16" | "u16" | "i32" | "u32" | "u64" | "i64" => single("number"),
                 "String" => single("string"),

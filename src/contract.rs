@@ -6,11 +6,13 @@ use syn::{
     TraitItem, TraitItemMethod,
 };
 
-use crate::{NearBindgen, NearImpl, NearMethod, NearSerde};
+use crate::near_sdk_syn::{NearBindgen, NearImpl, NearMethod, NearSerde};
 
 /// Represents a pass to several Rust files to build a NEAR Rust Contract.
 pub struct Contract {
     /// Represents the name of the Contract to export.
+    /// `None` to represent this `Contract` has no name yet.
+    /// A NEAR SDK Contract must have a name to be valid.
     pub name: Option<String>,
 
     ///

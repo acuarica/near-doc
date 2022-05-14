@@ -6,9 +6,8 @@ use syn::ImplItemMethod;
 
 use crate::{
     contract::{Contract, NearItem, NearItemTrait},
-    get_docs,
+    near_sdk_syn::{get_docs, write_docs, NearImpl, NearMethod},
     ts::{ts_ret_type, ts_sig},
-    write_docs, NearImpl, NearMethod,
 };
 
 ///
