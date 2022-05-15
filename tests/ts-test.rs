@@ -5,7 +5,7 @@ mod ts_items {
 
     #[test]
     fn it_should_omit_non_near_sdk_items() {
-        let ast: syn::File = parse2(quote! {
+        let ast: File = parse2(quote! {
             mod empty_mod { }
             trait A { }
         })
@@ -18,7 +18,7 @@ mod ts_items {
     }
 
     #[test]
-    fn it_should_forward_trait_comments() {
+    fn it_should_forward_trait_doc_comments() {
         let ast: File = parse2(quote! {
 
             /// doc for IContract
@@ -60,7 +60,7 @@ export interface IContract {
     }
 
     #[test]
-    fn it_should_merge_trait_and_impl_comments() {
+    fn it_should_merge_trait_and_impl_doc_comments() {
         let ast: File = parse2(quote! {
 
             /// doc for IContract
@@ -96,6 +96,81 @@ export interface IContract {
     /**
      * doc in Contract::get
      * doc for IContract::get
+     */
+    get(args: { f128: U128 }): Promise<U128>;
+
+}
+
+"#
+        );
+    }
+
+    #[test]
+    #[ignore = "modules not fully supported"]
+    fn it_should_merge_trait_and_impl_doc_comments_from_different_modules() {
+        let ast: File = parse2(quote! {
+            mod mod1 {
+                /// doc for mod1::IContract trait
+                trait IContract {
+                    /// doc for mod1::IContract::get
+                    fn get(&self, f128: U128) -> U128;
+                }
+
+                /// doc in mod1::Contract impl
+                #[near_bindgen]
+                impl IContract for Contract {
+                    /// doc in mod1::Contract::get
+                    pub fn get(&self, f128: U128) -> U128 { f128 }
+                }
+            }
+
+            mod mod2 {
+                /// doc for mod2::IContract trait
+                trait IContract {
+                    /// doc for mod2::IContract::get
+                    fn get(&self, f128: U128) -> U128;
+                }
+
+                /// doc for mod2::Contract impl
+                #[near_bindgen]
+                impl IContract for Contract {
+                    /// doc in mod2::Contract::get
+                    pub fn get(&self, f128: U128) -> U128 { f128 }
+                }
+            }
+
+        })
+        .unwrap();
+
+        let mut buf = Vec::new();
+        let mut contract = Contract::new();
+        contract.push_ast(ast);
+        ts_items(&mut buf, &contract).unwrap();
+        let out = String::from_utf8(buf).unwrap();
+        println!("{}", out);
+        assert_eq!(
+            out,
+            r#"/**
+ * doc in mod1::Contract impl
+ * doc for mod1::IContract trait
+ */
+export interface IContract {
+    /**
+     * doc in mod1::Contract::get
+     * doc for mod1::IContract::get
+     */
+    get(args: { f128: U128 }): Promise<U128>;
+
+}
+
+/**
+ * doc for mod2::Contract impl
+ * doc for mod2::IContract trait
+ */
+export interface IContract {
+    /**
+     * doc in mod2::Contract::get
+     * doc for mod2::IContract::get
      */
     get(args: { f128: U128 }): Promise<U128>;
 
@@ -303,7 +378,7 @@ mod ts_type {
     }
 
     #[test]
-    #[ignore = "Path not supported"]
+    #[ignore = "path resolution not supported"]
     fn it_should_convert_rust_path_types() {
         assert_eq!(ts_type(&parse_str("std::vec::Vec<U64>").unwrap()), "U64[]");
     }
